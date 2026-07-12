@@ -1,0 +1,586 @@
+import { useId, useState, useEffect, useMemo, type ReactNode } from "react";
+import { useForm, Controller } from "react-hook-form";
+import type { FieldDef } from "@/lib/entities";
+import { useEntityAll } from "@/lib/api/hooks";
+import type { EntityKey } from "@/lib/api/types";
+
+interface Props<T> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  fields: FieldDef[];
+  defaultValues?: Partial<T>;
+  submitLabel?: string;
+  onSubmit: (values: Partial<T>) => Promise<void> | void;
+  /** Notify parent when a specific field changes (useful for lookups). */
+  watchField?: string;
+  onWatchChange?: (value: string) => void;
+  /** Optional banner rendered at the top of the dialog body. */
+  banner?: ReactNode;
+}
+
+const CUSTOM_OPTS_KEY = "octopus.customOptions.v1";
+const IMPORT_WORKFLOW = [
+  "checklist",
+  "igmStatus",
+  "goodsRegi",
+  "assessmentType",
+  "boeCopyMailed",
+  "document",
+  "dutyPayment",
+  "ooc",
+  "ocMail",
+  "linerInvoice",
+  "linerPayment",
+  "paymentConfirm",
+  "doDocs",
+  "doReceived",
+  "stampDuty",
+  "performaInvoice",
+  "cfsPayment",
+  "delivery",
+  "vendorInvoices",
+];
+
+function loadCustomOptions(field: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_OPTS_KEY);
+    if (!raw) return [];
+    const map = JSON.parse(raw) as Record<string, string[]>;
+    return map[field] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomOption(field: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_OPTS_KEY);
+    const map = (raw ? JSON.parse(raw) : {}) as Record<string, string[]>;
+    const cur = map[field] ?? [];
+    if (!cur.includes(value)) map[field] = [...cur, value];
+    window.localStorage.setItem(CUSTOM_OPTS_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+function buildDefaults<T>(fields: FieldDef[], initial?: Partial<T>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const f of fields) {
+    const fromInitial = (initial as Record<string, unknown> | undefined)?.[f.name];
+    if (fromInitial !== undefined) {
+      out[f.name] = fromInitial;
+    } else if (f.default !== undefined) {
+      out[f.name] = f.default;
+    } else if (f.type === "number") {
+      out[f.name] = "";
+    } else if (f.type === "switch") {
+      out[f.name] = false;
+    } else if (f.type === "services") {
+      out[f.name] = {};
+    } else {
+      out[f.name] = "";
+    }
+  }
+  return out;
+}
+
+export function EntityFormDialog<T>({
+  open,
+  onOpenChange,
+  title,
+  fields,
+  defaultValues,
+  submitLabel = "Save",
+  onSubmit,
+  watchField,
+  onWatchChange,
+  banner,
+}: Props<T>) {
+  const formId = useId();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<Record<string, unknown>>({
+    defaultValues: buildDefaults<T>(fields, defaultValues),
+  });
+
+  useEffect(() => {
+    if (open) reset(buildDefaults<T>(fields, defaultValues));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultValues]);
+
+  const watched = watch();
+  const currentStage = useMemo(() => {
+  if (title !== "Update Job") return null;
+
+  for (const stage of IMPORT_WORKFLOW) {
+    if (watched[stage] !== "Done") {
+      return stage;
+    }
+  }
+
+  return IMPORT_WORKFLOW[IMPORT_WORKFLOW.length - 1];
+}, [title, watched]);
+const currentStageIndex = IMPORT_WORKFLOW.indexOf(currentStage ?? "");
+
+const isWorkflowFieldLocked = (fieldName: string) => {
+  if (title !== "Update Job") return false;
+
+  const index = IMPORT_WORKFLOW.indexOf(fieldName);
+
+  if (index === -1) return false;
+
+  // Only the current stage is editable.
+  return index !== currentStageIndex;
+};
+
+  useEffect(() => {
+  if (!open || !currentStage) return;
+
+  requestAnimationFrame(() => {
+    document
+      .getElementById(`workflow-${currentStage}`)
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+  });
+}, [open, currentStage]);
+  // Notify parent when watched field changes.
+  const watchedValue = watchField ? String(watched[watchField] ?? "") : "";
+  useEffect(() => {
+    if (watchField && onWatchChange) onWatchChange(watchedValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValue]);
+
+  const isVisible = (f: FieldDef): boolean => {
+    if (!f.showWhen) return true;
+    const v = String(watched[f.showWhen.field] ?? "");
+    const eq = f.showWhen.equals;
+    return Array.isArray(eq) ? eq.includes(v) : v === eq;
+  };
+
+  if (!open) return null;
+
+  
+
+  const submit = handleSubmit(async (raw) => {
+    console.log("FORM VALUES", raw);
+    const cleaned: Record<string, unknown> = {};
+    for (const f of fields) {
+      const v = raw[f.name];
+      if (f.type === "number") {
+        cleaned[f.name] = v === "" || v === null || v === undefined ? undefined : Number(v);
+      } else if (f.type === "switch") {
+        cleaned[f.name] = Boolean(v);
+      } else {
+        cleaned[f.name] = v;
+      }
+    }
+    await onSubmit(cleaned as Partial<T>);
+    onOpenChange(false);
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-end bg-foreground/20 backdrop-blur-sm sm:items-center sm:justify-center"
+      onClick={() => onOpenChange(false)}
+    >
+      <div
+        className="relative w-full max-w-4xl overflow-hidden rounded-t-2xl border border-border bg-card shadow-elevated sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+          <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="rounded p-1 text-muted-foreground hover:bg-accent"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        {banner && (
+          <div className="flex items-center justify-center border-b border-border bg-muted/40 px-5 py-2.5 text-center">
+            {banner}
+          </div>
+        )}
+        <form id={formId} onSubmit={submit} className="grid max-h-[75dvh] grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
+
+
+          {fields.filter(isVisible).map((f) => {
+            const err = errors[f.name]?.message as string | undefined;
+            const baseInput =
+              "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground";
+            const spanClass =
+              f.colSpan === 3
+                ? "sm:col-span-2 lg:col-span-3"
+                : f.colSpan === 2 || f.type === "textarea" || f.type === "services"
+                ? "sm:col-span-2"
+                : "";
+            return (
+              // <div key={f.name} className={`space-y-1.5 ${spanClass}`}> 
+              <div
+  id={`workflow-${f.name}`}
+  key={f.name}
+  className={`space-y-1.5 ${spanClass}`}
+>
+                <label className="text-xs font-medium text-foreground">
+                  {f.label}
+                  {f.required && <span className="ml-0.5 text-destructive">*</span>}
+                </label>
+                {f.type === "services" ? (
+                  <Controller
+                    control={control}
+                    name={f.name}
+                    render={({ field: ctl }) => (
+                      <ServicesChecklist
+                        options={f.options ?? []}
+                        statusOptions={f.serviceStatusOptions ?? ["Pending", "Done"]}
+                        value={
+                          ctl.value && typeof ctl.value === "object" && !Array.isArray(ctl.value)
+                            ? (ctl.value as Record<string, string>)
+                            : typeof ctl.value === "string" && ctl.value
+                            ? Object.fromEntries(
+                                ctl.value.split(/[;,]/).map((s) => {
+                                  const [k, v] = s.split(":").map((x) => x.trim());
+                                  return [k, v || (f.serviceStatusOptions?.[0] ?? "Pending")];
+                                }).filter(([k]) => k),
+                              )
+                            : {}
+                        }
+                        onChange={ctl.onChange}
+                      />
+                    )}
+                  />
+                ) : f.type === "select" ? (
+                  <DynamicSelect
+    field={f}
+    className={baseInput}
+    // locked={f.readOnly || isWorkflowFieldLocked(f.name)}
+    locked={!!f.readOnly}
+    register={register(f.name, {
+        required: f.required ? `${f.label} is required` : false,
+    })}
+/>
+                ) : f.type === "textarea" ? (
+                  <textarea
+                    placeholder={f.placeholder}
+                    rows={2}
+                    // readOnly={f.readOnly} 
+                    // readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
+                    readOnly={f.readOnly}
+                    className={`${baseInput} h-auto py-2`}
+                    {...register(f.name, {
+                      required: f.required ? `${f.label} is required` : false,
+                    })}
+                  />
+                ) : f.type === "switch" ? (
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      // disabled={f.readOnly}
+                      // disabled={f.readOnly || isWorkflowFieldLocked(f.name)}
+                      disabled={f.readOnly}
+                      className="size-4 rounded border-border accent-brand"
+                      {...register(f.name)}
+                    />
+                    <span className="text-muted-foreground">Enable</span>
+                  </label>
+                ) : (
+                  <input
+                    type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                    placeholder={f.placeholder}
+                    // readOnly={f.readOnly} 
+                    readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
+                    className={baseInput}
+                    {...register(f.name, {
+                      required: f.required ? `${f.label} is required` : false,
+                      min:
+                        f.type === "number" && f.min != null
+                          ? { value: f.min, message: `Minimum ${f.min}` }
+                          : undefined,
+                      max:
+                        f.type === "number" && f.max != null
+                          ? { value: f.max, message: `Maximum ${f.max}` }
+                          : undefined,
+                      pattern: f.email
+                        ? {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: "Invalid email",
+                          }
+                        : f.pattern,
+                    })}
+                  />
+                )}
+                {f.hint && !err && (
+                  <p className="text-[11px] text-muted-foreground">{f.hint}</p>
+                )}
+                {err && <p className="text-[11px] font-medium text-destructive">{err}</p>}
+              </div>
+            );
+          })}
+        </form>
+        <div className="flex items-center justify-end gap-2 border-t border-border bg-muted/40 px-5 py-3">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form={formId}
+            disabled={isSubmitting}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-60"
+          >
+            {isSubmitting ? "Saving…" : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  destructive = false,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  destructive?: boolean;
+  onConfirm: () => void | Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 backdrop-blur-sm"
+      onClick={() => !busy && onOpenChange(false)}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-elevated"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await onConfirm();
+                onOpenChange(false);
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-60 ${
+              destructive ? "bg-destructive" : "bg-primary"
+            }`}
+          >
+            {busy ? "Working…" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type RegisterReturn = ReturnType<ReturnType<typeof useForm<Record<string, unknown>>>["register"]>;
+
+function DynamicSelect({
+    field,
+    className,
+    register,
+    locked,
+}: {
+    field: FieldDef;
+    className: string;
+    register: RegisterReturn;
+    locked: boolean;
+}) {
+  const src = field.optionsSource;
+  const query = useEntityAll((src?.entity ?? "customers") as EntityKey);
+  const [customOpts, setCustomOpts] = useState<string[]>(() =>
+    field.creatable ? loadCustomOptions(field.name) : [],
+  );
+  const [showAdd, setShowAdd] = useState(false);
+  const [newOpt, setNewOpt] = useState("");
+
+  type Opt = { value: string; label: string };
+  const dynamicOptions: Opt[] = useMemo(() => {
+    if (src) {
+      return Array.from(
+        new Map(
+          ((query.data ?? []) as unknown as Array<Record<string, unknown>>)
+            .map((r) => {
+              const value = String(r[src.labelField] ?? "").trim();
+              const secondary = src.secondaryLabelField
+                ? String(r[src.secondaryLabelField] ?? "").trim()
+                : "";
+              const label = value && secondary ? `${value} — ${secondary}` : value;
+              return [value, { value, label }] as const;
+            })
+            .filter(([v]) => v),
+        ).values(),
+      ).sort((a, b) => a.label.localeCompare(b.label));
+    }
+    const base = [...(field.options ?? []), ...customOpts];
+    return Array.from(new Set(base)).map((o) => ({ value: o, label: o }));
+  }, [src, query.data, field.options, customOpts]);
+
+  const opts = dynamicOptions;
+  return (
+    <div className="space-y-1">
+      <select
+    className={className}
+    disabled={locked}
+    {...register}
+>
+        <option value="">
+          {src && query.isLoading ? "Loading…" : opts.length === 0 && src ? "No records yet" : "Select…"}
+        </option>
+        {opts.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {field.creatable && !field.readOnly && (
+        showAdd ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              value={newOpt}
+              onChange={(e) => setNewOpt(e.target.value)}
+              placeholder="New option"
+              className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-ring"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const v = newOpt.trim();
+                if (!v) return;
+                saveCustomOption(field.name, v);
+                setCustomOpts((prev) => (prev.includes(v) ? prev : [...prev, v]));
+                setNewOpt("");
+                setShowAdd(false);
+              }}
+              className="h-8 rounded-md bg-primary px-2 text-[11px] font-medium text-primary-foreground hover:opacity-95"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAdd(false);
+                setNewOpt("");
+              }}
+              className="h-8 rounded-md border border-border bg-background px-2 text-[11px] hover:bg-accent"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="text-[11px] font-medium text-brand hover:underline"
+          >
+            + Add option
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+function ServicesChecklist({
+  options,
+  statusOptions,
+  value,
+  onChange,
+}: {
+  options: string[];
+  statusOptions: string[];
+  value: Record<string, string>;
+  onChange: (v: Record<string, string>) => void;
+}) {
+  const toggle = (opt: string, checked: boolean) => {
+    const next = { ...value };
+    if (checked) {
+      if (!(opt in next)) next[opt] = statusOptions[0] ?? "";
+    } else {
+      delete next[opt];
+    }
+    onChange(next);
+  };
+  const setStatus = (opt: string, status: string) => {
+    onChange({ ...value, [opt]: status });
+  };
+  return (
+    <div className="rounded-lg border border-border bg-background p-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {options.map((opt) => {
+          const checked = opt in value;
+          return (
+            <div
+              key={opt}
+              className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5"
+            >
+              <label className="flex flex-1 items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => toggle(opt, e.target.checked)}
+                  className="size-4 rounded border-border accent-brand"
+                />
+                <span>{opt}</span>
+              </label>
+              {checked && (
+                <select
+                  value={value[opt] ?? ""}
+                  onChange={(e) => setStatus(opt, e.target.value)}
+                  className="h-7 rounded-md border border-border bg-background px-1.5 text-[11px] outline-none focus:border-ring"
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
