@@ -1,96 +1,36 @@
-// Repository abstraction. Today it persists to localStorage for a single-user
-// dev experience. Swap `apiClient` for a fetch-based FastAPI client without
-// touching consumers — all React Query hooks call this surface.
-// import type { EntityKey, EntityMap, ID } from "./types";
-// import { seedData } from "./seed";
-
-// const STORAGE_PREFIX = "octopus.scm.v1.";
-// const isBrowser = typeof window !== "undefined";
-
-// function read<K extends EntityKey>(key: K): EntityMap[K][] {
-//   if (!isBrowser) return [];
-//   const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-//   if (raw) {
-//     try {
-//       return JSON.parse(raw) as EntityMap[K][];
-//     } catch {
-//       /* fallthrough to seed */
-//     }
-//   }
-//   const seed = (seedData[key] ?? []) as EntityMap[K][];
-//   window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(seed));
-//   return seed;
-// }
-
-// function write<K extends EntityKey>(key: K, value: EntityMap[K][]) {
-//   if (!isBrowser) return;
-//   window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
-// }
-
-// function uuid(): ID {
-//   if (isBrowser && "crypto" in window && "randomUUID" in window.crypto) {
-//     return window.crypto.randomUUID();
-//   }
-//   return `id_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-// }
-
-// async function delay<T>(value: T, ms = 120): Promise<T> {
-//   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-// }
-
-// export interface ListQuery {
-//   search?: string;
-//   sortKey?: string;
-//   sortDir?: "asc" | "desc";
-//   page?: number;
-//   pageSize?: number;
-//   filter?: Record<string, string | number | boolean | undefined>;
-// }
-
-// export interface ListResult<T> {
-//   rows: T[];
-//   total: number;
-//   page: number;
-//   pageSize: number;
-// }
-
-// function matchesSearch(row: Record<string, unknown>, search: string): boolean {
-//   const q = search.toLowerCase();
-//   return Object.values(row).some((v) =>
-//     v == null ? false : String(v).toLowerCase().includes(q),
-//   );
-// }  OLD CODE 
 
 import type { EntityKey, EntityMap, ID } from "./types";
 
-// const API = "http://localhost:8000";
+const API = "const API = import.meta.env.VITE_API_URL;";
  
-const API = "https://octopus-scm-backend.onrender.com";
+// const API = "https://octopus-scm-backend.onrender.com";
 const TOKEN_KEY = "access_token";
 
 function token() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-
-
-
 async function request<T>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(API + url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token()
-        ? {
-            Authorization: `Bearer ${token()}`,
-          }
-        : {}),
-      ...(options.headers || {}),
-    },
-  });
+  const headers: Record<string, string> = {
+  ...(token()
+    ? {
+        Authorization: `Bearer ${token()}`,
+      }
+    : {}),
+  ...(options.headers as Record<string, string>),
+};
+
+if (!(options.body instanceof FormData)) {
+  headers["Content-Type"] = "application/json";
+}
+
+const res = await fetch(API + url, {
+  ...options,
+  headers,
+});
 
   if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
@@ -133,6 +73,10 @@ export interface ListQuery {
   sortDir?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+
+  skip?: number;
+  limit?: number;
+
   filter?: Record<string, string | number | boolean | undefined>;
 }
 
@@ -215,7 +159,9 @@ function toImportWorkflowPayload(workflow: any) {
   };
 }
 
-function fromImportWorkflow(item: any) {
+
+
+function fromImportWorkflow(item: any): Record<string, unknown> {
   return {
     id: item.id ?? item._id,
 
@@ -292,172 +238,6 @@ igmDate: item.igm_date?.split("T")[0] ?? "",
 }
 
 export const apiClient = {
-  // async list<K extends EntityKey>(key: K, query: ListQuery = {}): Promise<ListResult<EntityMap[K]>> {
-  //   let rows = read(key);
-  //   if (query.search) {
-  //     rows = rows.filter((r) => matchesSearch(r as unknown as Record<string, unknown>, query.search!));
-  //   }
-  //   if (query.filter) {
-  //     for (const [k, v] of Object.entries(query.filter)) {
-  //       if (v === undefined || v === "" || v === "all") continue;
-  //       rows = rows.filter((r) => String((r as unknown as Record<string, unknown>)[k] ?? "") === String(v));
-  //     }
-  //   }
-  //   if (query.sortKey) {
-  //     const dir = query.sortDir === "desc" ? -1 : 1;
-  //     const sk = query.sortKey;
-  //     rows = [...rows].sort((a, b) => {
-  //       const av = (a as unknown as Record<string, unknown>)[sk];
-  //       const bv = (b as unknown as Record<string, unknown>)[sk];
-  //       if (av == null && bv == null) return 0;
-  //       if (av == null) return -1 * dir;
-  //       if (bv == null) return 1 * dir;
-  //       if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-  //       return String(av).localeCompare(String(bv)) * dir;
-  //     });
-  //   }
-  //   const total = rows.length;
-  //   const page = query.page ?? 1;
-  //   const pageSize = query.pageSize ?? 25;
-  //   const start = (page - 1) * pageSize;
-  //   const paged = rows.slice(start, start + pageSize);
-  //   return delay({ rows: paged, total, page, pageSize });
-  // },
-
-  // async all<K extends EntityKey>(key: K): Promise<EntityMap[K][]> {
-  //   return delay(read(key));
-  // },
-
-  // async get<K extends EntityKey>(key: K, id: ID): Promise<EntityMap[K] | undefined> {
-  //   return delay(read(key).find((r) => (r as { id: ID }).id === id));
-  // }, OLD CODE
-
-//   async list<K extends EntityKey>(
-//   key: K,
-//   query: ListQuery = {},
-// ): Promise<ListResult<EntityMap[K]>> {
-
-//   const route = ROUTES[key];
-
-//   if (!route) {
-//     throw new Error(`${key} backend not implemented`);
-//   }
-
-//   const page = query.page ?? 1;
-//   const pageSize = query.pageSize ?? 20;
-
-//   const skip = (page - 1) * pageSize;
-
-//   const response = await request<{
-//     total: number;
-//     skip: number;
-//     limit: number;
-//     items: EntityMap[K][];
-//   }>(
-//     `${route}?search=${encodeURIComponent(query.search ?? "")}&skip=${skip}&limit=${pageSize}`,
-//   );
-
-//   return {
-//     // rows: response.items, 
-//     rows: response.items.map((item: any) => ({
-//   id: item.id ?? item._id,
-
-//   jobNo: item.job_no,
-//   blNo: item.bl_no,
-//   blDate: item.bl_date,
-
-//   invoiceNo: item.invoice_no,
-//   invoiceDate: item.invoice_date,
-
-//   noOfCntr: item.no_of_cntr,
-//   size: item.size,
-
-//   lineName: item.line_name,
-//   forwarderName: item.forwarder,
-
-//   eta: item.eta,
-
-//   consigneeName: item.consignee_name,
-//   consigneeAddress: item.consignee_address,
-
-//   cargoDescription: item.cargo_description,
-
-//   createdAt: item.created_at,
-// })),
-//     total: response.total,
-//     page,
-//     pageSize,
-//   };
-// }, 
-// async list<K extends EntityKey>(
-//   key: K,
-//   query: ListQuery = {},
-// ): Promise<ListResult<EntityMap[K]>> {
-
-//   const route = ROUTES[key];
-
-//   if (!route) {
-//     throw new Error(`${key} backend not implemented`);
-//   }
-
-//   const page = query.page ?? 1;
-//   const pageSize = query.pageSize ?? 20;
-//   const skip = (page - 1) * pageSize;
-
-//   const response = await request<{
-//     total: number;
-//     skip: number;
-//     limit: number;
-//     items: any[];
-//   }>(
-//     `${route}?search=${encodeURIComponent(query.search ?? "")}&skip=${skip}&limit=${pageSize}`,
-//   );
-
-//   if (key === "importJobs") {
-//     return {
-//       rows: response.items.map((item: any) => ({
-//         id: item.id ?? item._id,
-
-//         // jobNo: item.job_no,
-//         jobNo: item.job_number,
-//         blNo: item.bl_no,
-//         blDate: item.bl_date,
-
-//         invoiceNo: item.invoice_no,
-//         invoiceDate: item.invoice_date,
-
-//         noOfCntr: item.no_of_cntr,
-//         size: item.size,
-
-//         lineName: item.line_name,
-//         forwarderName: item.forwarder,
-
-//         eta: item.eta,
-
-//         consigneeName: item.consignee_name,
-//         consigneeAddress: item.consignee_address,
-
-//         cargoDescription: item.cargo_description,
-
-//         createdAt: item.created_at,
-//       })) as EntityMap[K][],
-//       total: response.total,
-//       page,
-//       pageSize,
-//     };
-//   }
-
-//   return {
-//     rows: response.items.map((item: any) => ({
-//       ...item,
-//       id: item.id ?? item._id,
-//     })) as EntityMap[K][],
-//     total: response.total,
-//     page,
-//     pageSize,
-//   };
-// },
-
 async list<K extends EntityKey>(
   key: K,
   query: ListQuery = {},
@@ -471,7 +251,9 @@ async list<K extends EntityKey>(
 
   const page = query.page ?? 1;
   const pageSize = query.pageSize ?? 20;
-  const skip = (page - 1) * pageSize;
+
+  const limit = query.pageSize ?? query.limit ?? 20;
+  const skip = query.skip ?? (page - 1) * pageSize;
 
   const response = await request<{
     total: number;
@@ -479,7 +261,7 @@ async list<K extends EntityKey>(
     limit: number;
     items: any[];
   }>(
-    `${route}?search=${encodeURIComponent(query.search ?? "")}&skip=${skip}&limit=${pageSize}`,
+    `${route}?search=${encodeURIComponent(query.search ?? "")}&skip=${skip}&limit=${limit}`,
   );
 
   // ---------------- Import Jobs ----------------
@@ -526,7 +308,7 @@ async list<K extends EntityKey>(
 
   if (key === "importChecklists") {
     return {
-      rows: response.items.map(fromImportWorkflow) as EntityMap[K][],
+      rows: response.items.map(item => fromImportWorkflow(item)) as unknown as EntityMap[K][],
       total: response.total,
       page,
       pageSize,
@@ -537,9 +319,17 @@ async list<K extends EntityKey>(
 
   return {
     rows: response.items.map((item: any) => ({
-      ...item,
-      id: item.id ?? item._id,
-    })) as EntityMap[K][],
+  ...item,
+  id: item.id ?? item._id,
+
+  customerCode: item.customer_code,
+  customer_code: item.customer_code,
+
+  customerName: item.customer_name,
+  customer_name: item.customer_name,
+
+  countryCode: item.country_code,
+})) as EntityMap[K][],
     total: response.total,
     page,
     pageSize,
@@ -547,9 +337,13 @@ async list<K extends EntityKey>(
 },
 
 async all<K extends EntityKey>(key: K): Promise<EntityMap[K][]> {
-  return (await this.list(key)).rows;
-},
+  const result = await this.list(key, {
+    skip: 0,
+    limit: 1000,
+  });
 
+  return result.rows;
+},
 async get<K extends EntityKey>(
   key: K,
   id: ID,
@@ -562,21 +356,29 @@ async get<K extends EntityKey>(
   }
 
   // return request<EntityMap[K]>(`${route}/${id}`);
-const item: any = await request(`${route}/${id}`);
+const item = await request<any>(`${route}/${id}`);
 
 if (key === "importChecklists") {
-  return fromImportWorkflow(item) as EntityMap[K];
+  return fromImportWorkflow(item) as unknown as EntityMap[K];
 }
 
 return {
   ...item,
   id: item.id ?? item._id,
+
+  customerCode: item.customer_code,
+  customer_code: item.customer_code,
+
+  customerName: item.customer_name,
+  customer_name: item.customer_name,
+
+  countryCode: item.country_code,
 };
 },
 
 async create<K extends EntityKey>(
   key: K,
-  input: Partial<EntityMap[K]>,
+  input: any,
 ): Promise<EntityMap[K]> {
 
   const route = ROUTES[key];
@@ -601,7 +403,7 @@ console.table(payload);
     },
   );
 
-  return fromImportWorkflow(item) as EntityMap[K];
+  return fromImportWorkflow(item) as unknown as EntityMap[K];
 }
 
   if (!route) {
@@ -609,6 +411,33 @@ console.table(payload);
   }
 
   let payload: any = input;
+
+ if (key === "customers") {
+
+  const formData = new FormData();
+
+  formData.append("customer_code", input.customer_code ?? "");
+  formData.append("customer_name", input.customer_name ?? "");
+  formData.append("address", input.address ?? "");
+  formData.append("email", input.email ?? "");
+
+  formData.append("countryCode", input.countryCode ?? "+91");
+  formData.append("phone", input.phone ?? "");
+
+  formData.append("gstin", input.gstin ?? "");
+  formData.append("pan", input.pan ?? "");
+  formData.append("tan", input.tan ?? "");
+
+  if (input.gst_document) {
+    formData.append("gst_document", input.gst_document);
+  }
+
+  if (input.pan_document) {
+    formData.append("pan_document", input.pan_document);
+  }
+
+  payload = formData;
+}
 
   if (key === "importJobs") {
     payload = {
@@ -627,9 +456,11 @@ console.table(payload);
       cargo_description: input.cargoDescription,
     };
   }
-  const item: any = await request(route, {
+ const item = await request<any>(route, {
   method: "POST",
-  body: JSON.stringify(payload),
+  body: payload instanceof FormData
+    ? payload
+    : JSON.stringify(payload),
 });
 
 if (key === "importJobs") {
@@ -693,10 +524,27 @@ const item = await request<any>(
   },
 );
 
-return fromImportWorkflow(item) as EntityMap[K];
+// return fromImportWorkflow(item) as EntityMap[K]; 
+return fromImportWorkflow(item) as unknown as EntityMap[K];
   }
 
   // ---------------- Default ----------------
+
+ if (key === "customers") {
+  const customer = patch as any;
+
+  patch = {
+    customer_code: customer.customer_code,
+    customer_name: customer.customer_name,
+    address: customer.address,
+    email: customer.email,
+    country_code: customer.countryCode,
+    phone: customer.phone,
+    gstin: customer.gstin,
+    pan: customer.pan,
+    tan: customer.tan,
+  } as any;
+}
 
   if (!route) {
     throw new Error(`${key} backend not implemented`);
@@ -783,6 +631,22 @@ async bulkCreate<K extends EntityKey>(
 
   return result;
 },
+async getNextCustomerCode(): Promise<string> {
+  const response = await request<{
+    customer_code: string;
+  }>("/customers/next-code");
+
+  return response.customer_code;
+},
+
+async getNextImportJobNumber(): Promise<string> {
+  const response = await request<{
+    job_number: string;
+  }>("/import-jobs/next-number");
+
+  return response.job_number;
+},
+
 };
 
 export type ApiClient = typeof apiClient; 

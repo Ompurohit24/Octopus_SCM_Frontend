@@ -46,6 +46,7 @@ export interface Customer {
   address: string;
 
   email: string;
+  countryCode: string;
   phone: string;
 
   gstin: string;

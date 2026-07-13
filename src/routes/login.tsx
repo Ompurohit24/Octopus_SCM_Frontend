@@ -38,12 +38,12 @@ function Login() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    defaultValues: { username: "aarav.kapoor", password: "octopus123", remember: true },
+    defaultValues: { username: "", password: "", remember: true },
   });
 
   // const onSubmit = handleSubmit(async (values) => {
   //   // Simulate auth round-trip. Wire to FastAPI by replacing this block:
-  //   // const res = await fetch(`${API}/auth/login`, { method: "POST", body: JSON.stringify(values) })
+  //    const res = await fetch(`${API}/auth/login`, { method: "POST", body: JSON.stringify(values) })
   //   await new Promise((r) => setTimeout(r, 700));
   //   const name = values.username.includes(".")
   //     ? values.username
@@ -62,34 +62,122 @@ function Login() {
   //   navigate({ to: "/dashboard" });
   // });  
 
-  const onSubmit = handleSubmit(async (values) => {
-    console.log(import.meta.env);
-  console.log(import.meta.env.VITE_API_URL);
-  alert(import.meta.env.VITE_API_URL);
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: values.username,
-        password: values.password,
-      }),
-    });
 
-    if (!response.ok) {
-      throw new Error("Invalid email or password");
-    }
+//   const onSubmit = handleSubmit(async (values) => {
+//   try {
+//     const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({
+//         email: values.username,
+//         password: values.password,
+//       }),
+//     });
+
+//     if (!response.ok) {
+//       throw new Error("Invalid email or password");
+//     }
+
+//     const data = await response.json();
+
+//     console.log("1. Response received");
+
+// localStorage.setItem("access_token", data.access_token);
+
+// console.log("2. Token saved");
+
+// const name = values.username.includes(".")
+//   ? values.username
+//       .split(".")
+//       .map((s) => s[0].toUpperCase() + s.slice(1))
+//       .join(" ")
+//   : values.username;
+
+// ws.login({
+//   id: values.username,
+//   name,
+//   initials: getInitials(name),
+//   role: "Admin",
+//   email: values.username,
+// });
+
+// console.log("3. Workspace updated");
+
+// navigate({
+//   to: "/dashboard",
+// });
+
+// console.log("4. Navigate called");
+
+// toast.success("Login successful");
+
+// } catch (e) {
+//   toast.error(
+//     e instanceof Error ? e.message : "Login failed"
+//   );
+// }
+// });
+
+//     localStorage.setItem("access_token", data.access_token); Temporarily commented out for testing purposes. You can uncomment this line to store the access token in localStorage if needed.
+
+//     const name = values.username.includes(".")
+//       ? values.username
+//           .split(".")
+//           .map((s) => s[0]!.toUpperCase() + s.slice(1))
+//           .join(" ")
+//       : values.username;
+
+//     ws.login({
+//       id: values.username,
+//       name,
+//       initials: getInitials(name),
+//       role: "Admin",
+//       email: values.username,
+//     });
+
+//     toast.success("Login successful");
+
+//     navigate({
+//       to: "/dashboard",
+//     });
+//   } catch (e) {
+//     toast.error(
+//       e instanceof Error ? e.message : "Login failed",
+//     );
+//   }
+// });
+const onSubmit = handleSubmit(async (values) => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/auth/login`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: values.username,
+          password: values.password,
+        }),
+      }
+    );
 
     const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Invalid email or password");
+    }
 
     localStorage.setItem("access_token", data.access_token);
 
     const name = values.username.includes(".")
       ? values.username
           .split(".")
-          .map((s) => s[0]!.toUpperCase() + s.slice(1))
+          .map(
+            (s) => s.charAt(0).toUpperCase() + s.slice(1)
+          )
           .join(" ")
       : values.username;
 
@@ -97,8 +185,8 @@ function Login() {
       id: values.username,
       name,
       initials: getInitials(name),
-      role: "Admin",
-      email: values.username,
+      role: data.user?.role ?? "Admin",
+      email: data.user?.email ?? values.username,
     });
 
     toast.success("Login successful");
@@ -106,13 +194,14 @@ function Login() {
     navigate({
       to: "/dashboard",
     });
-  } catch (e) {
+  } catch (err) {
     toast.error(
-      e instanceof Error ? e.message : "Login failed",
+      err instanceof Error
+        ? err.message
+        : "Login failed"
     );
   }
 });
-
   return (
     <main className="grid min-h-dvh grid-cols-1 bg-background lg:grid-cols-[1.05fr_1fr]">
       <section className="relative hidden overflow-hidden bg-[oklch(0.22_0.06_255)] text-white lg:block">

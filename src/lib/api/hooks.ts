@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+// import { apiClient, type ListQuery } from "./storage"; 
 import { apiClient, type ListQuery } from "./storage";
 import type { EntityKey, EntityMap, ID } from "./types";
 import { toast } from "sonner";
@@ -17,6 +18,21 @@ export function useEntityList<K extends EntityKey>(key: K, query: ListQuery = {}
     staleTime: 10_000,
   });
 }
+export function useNextCustomerCode() {
+  return useQuery({
+    queryKey: ["customers", "next-code"],
+    queryFn: () => apiClient.getNextCustomerCode(),
+    staleTime: 0,
+  });
+}
+
+export function useNextImportJobNumber() {
+  return useQuery({
+    queryKey: ["import-jobs", "next-number"],
+    queryFn: () => apiClient.getNextImportJobNumber(),
+    staleTime: 0,
+  });
+}
 
 export function useEntityAll<K extends EntityKey>(key: K) {
   return useQuery({
@@ -25,6 +41,14 @@ export function useEntityAll<K extends EntityKey>(key: K) {
     staleTime: 10_000,
   });
 }
+
+// export function useNextCustomerCode() {
+//   return useQuery({
+//     queryKey: ["next-customer-code"],
+//     queryFn: () => apiClient.getNextCustomerCode(),
+//     staleTime: 0,
+//   });
+// }
 
 export function useCreateEntity<K extends EntityKey>(key: K, label = "Record") {
   const qc = useQueryClient();
@@ -86,3 +110,9 @@ export function useBulkCreate<K extends EntityKey>(key: K, label = "Records") {
     onError: (e: Error) => toast.error(e.message || `Failed to import ${label}`),
   });
 }
+// export function useNextCustomerCode() {
+//   return useQuery({
+//     queryKey: ["customers", "next-code"],
+//     queryFn: () => apiClient.getNextCustomerCode(),
+//   });
+// }

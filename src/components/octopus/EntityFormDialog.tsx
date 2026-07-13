@@ -1,8 +1,15 @@
+// import { useId, useState, useEffect, useMemo, type ReactNode } from "react";
 import { useId, useState, useEffect, useMemo, type ReactNode } from "react";
+import { Logo } from "@/components/octopus/Logo";
 import { useForm, Controller } from "react-hook-form";
 import type { FieldDef } from "@/lib/entities";
-import { useEntityAll } from "@/lib/api/hooks";
+// import { useEntityAll } from "@/lib/api/hooks";
 import type { EntityKey } from "@/lib/api/types";
+import {
+  useEntityAll,
+  useNextCustomerCode,
+  useNextImportJobNumber,
+} from "@/lib/api/hooks";
 
 interface Props<T> {
   open: boolean;
@@ -11,7 +18,7 @@ interface Props<T> {
   fields: FieldDef[];
   defaultValues?: Partial<T>;
   submitLabel?: string;
-  onSubmit: (values: Partial<T>) => Promise<void> | void;
+  onSubmit: (values: Partial<T>) => Promise<Partial<T>> | Partial<T>;
   /** Notify parent when a specific field changes (useful for lookups). */
   watchField?: string;
   onWatchChange?: (value: string) => void;
@@ -101,16 +108,23 @@ export function EntityFormDialog<T>({
   banner,
 }: Props<T>) {
   const formId = useId();
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    control,
-    formState: { errors, isSubmitting },
-  } = useForm<Record<string, unknown>>({
+ const {
+  register,
+  handleSubmit,
+  reset,
+  watch,
+  control,
+  setValue,
+  formState: { errors, isSubmitting },
+} = useForm<Record<string, unknown>>({
     defaultValues: buildDefaults<T>(fields, defaultValues),
   });
+
+const { data: nextCustomerCode } = useNextCustomerCode();
+const { data: nextImportJobNumber } = useNextImportJobNumber();
+
+const [errorDialog, setErrorDialog] = useState(false);
+const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (open) reset(buildDefaults<T>(fields, defaultValues));
@@ -129,6 +143,42 @@ export function EntityFormDialog<T>({
 
   return IMPORT_WORKFLOW[IMPORT_WORKFLOW.length - 1];
 }, [title, watched]);
+
+useEffect(() => {
+  if (!open) return;
+
+  if (title === "New Customer") {
+    reset(buildDefaults<T>(fields, defaultValues));
+
+    if (nextCustomerCode) {
+      setValue("customer_code", nextCustomerCode, {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+    }
+  }
+
+  if (title === "New Import Job") {
+    reset(buildDefaults<T>(fields, defaultValues));
+
+    if (nextImportJobNumber) {
+      setValue("jobNo", nextImportJobNumber, {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+    }
+  }
+}, [
+  open,
+  title,
+  nextCustomerCode,
+  nextImportJobNumber,
+  reset,
+  setValue,
+  fields,
+  defaultValues,
+]);
+
 const currentStageIndex = IMPORT_WORKFLOW.indexOf(currentStage ?? "");
 
 const isWorkflowFieldLocked = (fieldName: string) => {
@@ -168,26 +218,74 @@ const isWorkflowFieldLocked = (fieldName: string) => {
     return Array.isArray(eq) ? eq.includes(v) : v === eq;
   };
 
+
+
+   const [successDialog, setSuccessDialog] = useState(false);
+const [createdCustomer, setCreatedCustomer] = useState<Record<string, unknown>>({});
+
+const [importSuccessDialog, setImportSuccessDialog] = useState(false);
+const [updatedImportSuccessDialog, setUpdatedImportSuccessDialog] = useState(false);
+
+const [createdImportJob, setCreatedImportJob] = useState<Record<string, unknown>>({});
   if (!open) return null;
 
   
+ 
 
-  const submit = handleSubmit(async (raw) => {
-    console.log("FORM VALUES", raw);
-    const cleaned: Record<string, unknown> = {};
-    for (const f of fields) {
-      const v = raw[f.name];
-      if (f.type === "number") {
-        cleaned[f.name] = v === "" || v === null || v === undefined ? undefined : Number(v);
-      } else if (f.type === "switch") {
-        cleaned[f.name] = Boolean(v);
-      } else {
-        cleaned[f.name] = v;
-      }
+const submit = handleSubmit(async (raw) => {
+  const cleaned: Record<string, unknown> = {};
+
+  for (const f of fields) {
+    const v = raw[f.name];
+    if (f.type === "file") {
+  cleaned[f.name] = v;
+  continue;
+}
+
+    if (f.type === "number") {
+      cleaned[f.name] =
+        v === "" || v === null || v === undefined
+          ? undefined
+          : Number(v);
+    } else if (f.type === "switch") {
+      cleaned[f.name] = Boolean(v);
+    } else {
+      cleaned[f.name] = v;
     }
-    await onSubmit(cleaned as Partial<T>);
-    onOpenChange(false);
-  });
+  }
+
+let saved;
+
+try {
+  saved = await onSubmit(cleaned as Partial<T>);
+} catch (e) {
+  setErrorMessage(
+    e instanceof Error ? e.message : "Operation failed."
+  );
+  setErrorDialog(true);
+  return;
+}
+
+if (title === "New Customer") {
+    setCreatedCustomer(saved as Record<string, unknown>);
+    setSuccessDialog(true);
+    return;
+}
+
+if (title === "New Import Job") {
+    setCreatedImportJob((saved ?? cleaned) as Record<string, unknown>);
+    setImportSuccessDialog(true);
+    return;
+}
+
+if (title === "Update Job") {
+    setCreatedImportJob((saved ?? cleaned) as Record<string, unknown>);
+    setUpdatedImportSuccessDialog(true);
+    return;
+}
+
+onOpenChange(false);
+});
 
   return (
     <div
@@ -288,15 +386,36 @@ const isWorkflowFieldLocked = (fieldName: string) => {
                   <label className="inline-flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
-                      // disabled={f.readOnly}
-                      // disabled={f.readOnly || isWorkflowFieldLocked(f.name)}
                       disabled={f.readOnly}
                       className="size-4 rounded border-border accent-brand"
                       {...register(f.name)}
                     />
                     <span className="text-muted-foreground">Enable</span>
                   </label>
-                ) : (
+                ) : f.type === "file" ? (
+
+  <div className="space-y-2">
+  <input
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png"
+    className={baseInput}
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+
+      if (file) {
+        setValue(f.name, file);
+      }
+    }}
+  />
+
+  {watch(f.name) instanceof File && (
+    <p className="text-xs text-muted-foreground">
+      Selected: {(watch(f.name) as File).name}
+    </p>
+  )}
+</div>
+
+) : (
                   <input
                     type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
                     placeholder={f.placeholder}
@@ -347,6 +466,177 @@ const isWorkflowFieldLocked = (fieldName: string) => {
             {isSubmitting ? "Saving…" : submitLabel}
           </button>
         </div>
+            {successDialog && (
+  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+
+      <Logo
+    size={80}
+    className="mx-auto justify-center"
+    showWordmark={false}
+/>
+
+      <h2 className="mt-5 text-2xl font-bold text-green-600">
+        Customer Created Successfully
+      </h2>
+
+      <div className="mt-6 space-y-2 text-sm">
+
+        <div>
+          <strong>Customer Code</strong>
+          <br />
+          {(createdCustomer.customer_code as string) ?? ""}
+        </div>
+
+        <div>
+          <strong>Customer Name</strong>
+          <br />
+          {(createdCustomer.customer_name as string) ?? ""}
+        </div>
+
+      </div>
+
+      <button
+        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+        onClick={() => {
+          setSuccessDialog(false);
+          onOpenChange(false);
+        }}
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
+
+{importSuccessDialog && (
+  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+
+      <Logo
+        size={80}
+        className="mx-auto justify-center"
+        showWordmark={false}
+      />
+
+      <h2 className="mt-5 text-2xl font-bold text-green-600">
+        Import Job Created Successfully
+      </h2>
+
+      <div className="mt-6 space-y-2 text-sm">
+
+        <div>
+          <strong>Job Number</strong>
+          <br />
+          {(createdImportJob.jobNo as string) ??
+            (createdImportJob.job_number as string) ??
+            ""}
+        </div>
+
+        <div>
+          <strong>BL No</strong>
+          <br />
+          {(createdImportJob.blNo as string) ??
+            (createdImportJob.bl_no as string) ??
+            ""}
+        </div>
+
+      </div>
+
+      <button
+        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+        onClick={() => {
+          setImportSuccessDialog(false);
+          onOpenChange(false);
+        }}
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
+
+{updatedImportSuccessDialog && (
+  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+
+      <Logo
+        size={80}
+        className="mx-auto justify-center"
+        showWordmark={false}
+      />
+
+      <h2 className="mt-5 text-2xl font-bold text-green-600">
+        Workflow Updated Successfully
+      </h2>
+
+      <div className="mt-6 space-y-2 text-sm">
+
+        <div>
+          <strong>Job Number</strong>
+          <br />
+          {(createdImportJob.jobNo as string) ??
+            (createdImportJob.job_number as string) ??
+            ""}
+        </div>
+
+        <div>
+          <strong>BL No</strong>
+          <br />
+          {(createdImportJob.blNo as string) ??
+            (createdImportJob.bl_no as string) ??
+            ""}
+        </div>
+
+      </div>
+
+      <button
+        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+        onClick={() => {
+          setUpdatedImportSuccessDialog(false);
+          onOpenChange(false);
+        }}
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
+
+
+
+{errorDialog && (
+  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+
+      <Logo
+        size={70}
+        className="mx-auto justify-center"
+        showWordmark={false}
+      />
+
+      <h2 className="mt-5 text-2xl font-bold text-red-600">
+        Duplicate Record
+      </h2>
+
+      <p className="mt-5 text-sm">
+        {errorMessage}
+      </p>
+
+      <button
+        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+        onClick={() => setErrorDialog(false)}
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
+
       </div>
     </div>
   );
@@ -580,7 +870,11 @@ function ServicesChecklist({
             </div>
           );
         })}
+
+        
+        
       </div>
     </div>
+    
   );
 }

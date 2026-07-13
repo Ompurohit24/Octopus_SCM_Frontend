@@ -6,7 +6,15 @@ import type { EntityKey, EntityMap } from "@/lib/api/types";
 import { Pill } from "@/components/octopus/ModulePage";
 import { formatINR, formatDate } from "@/lib/csv";
 
-export type FieldType = "text" | "number" | "select" | "date" | "textarea" | "switch" | "services";
+export type FieldType =
+  | "text"
+  | "number"
+  | "select"
+  | "date"
+  | "textarea"
+  | "switch"
+  | "services"
+  | "file";
 
 export interface FieldDef {
   name: string;
@@ -244,11 +252,32 @@ fields: [
     email: true,
   },
   {
-    name: "phone",
-    label: "Phone",
-    type: "text",
-    required: true,
-  },
+  name: "countryCode",
+  label: "Country Code",
+  type: "select",
+  required: true,
+  default: "+91",
+  options: [
+    "+91",
+    "+1",
+    "+44",
+    "+61",
+    "+65",
+    "+971",
+    "+966",
+    "+86",
+    "+81",
+    "+49",
+  ],
+},
+
+{
+  name: "phone",
+  label: "Mobile Number",
+  type: "text",
+  required: true,
+  placeholder: "9876543210",
+},
   {
     name: "gstin",
     label: "GSTIN",
@@ -260,6 +289,13 @@ fields: [
     // },
   },
   {
+  name: "gst_document",
+  label: "GST Document",
+  type: "file",
+  required: true,
+  hint: "Upload GST Certificate (PDF, JPG, PNG)",
+},
+  {
     name: "pan",
     label: "PAN",
     type: "text",
@@ -269,6 +305,13 @@ fields: [
     //   message: "Invalid PAN format",
     // },
   },
+  {
+  name: "pan_document",
+  label: "PAN Document",
+  type: "file",
+  required: true,
+  hint: "Upload PAN Card (PDF, JPG, PNG)",
+},
   {
     name: "tan",
     label: "TAN",
@@ -451,7 +494,14 @@ export const importJobsConfig: EntityConfig<"importJobs"> = {
     { name: "invoiceDate", label: "Invoice Date", type: "date", required: true },
     { name: "noOfCntr", label: "No of Cntr", type: "number", min: 0, required: true },
     { name: "size", label: "Size", type: "select", options: ["20", "40", "40HC", "45"], default: "40", required: true },
-    { name: "lineName", label: "Line Name", type: "text", required: true },
+    {
+  name: "lineName",
+  label: "Line Name",
+  type: "select",
+  required: true,
+  creatable: true,
+  options: [],
+},
     { name: "forwarderName", label: "Name of Forwarder", type: "select", required: true, optionsSource: {
   entity: "customers",
   labelField: "customer_name",

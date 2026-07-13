@@ -53,7 +53,7 @@ function Splash() {
           <div className="absolute inset-0 grid place-items-center">
             <div className="size-24 rounded-full pulse-ring" />
           </div>
-          <Logo size={96} spinning />
+          <Logo size={96} />
         </div>
 
         <div className="text-center">

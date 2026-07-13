@@ -161,12 +161,15 @@ const defaults = useMemo<Partial<ImportChecklist>>(
   };
 
   if (existing) {
+    console.log("Selected Job:", selectedJob);
+console.log("Existing Workflow:", existing);
+console.log("Loaded Workflows:", checklists.data);
     await update.mutateAsync({
       id: existing.id,
       patch: payload,
     });
 
-    toast.success("Workflow updated successfully.");
+    // toast.success("Workflow updated successfully.");
   } else {
     await create.mutateAsync(payload);
 

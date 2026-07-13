@@ -13,6 +13,9 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+// import { useQuery } from "@tanstack/react-query"; 
+
+import { apiClient } from "@/lib/api/storage";
 import {
   useEntityList,
   useCreateEntity,
@@ -20,12 +23,15 @@ import {
   useDeleteEntity,
   useBulkDelete,
   useBulkCreate,
+  useNextCustomerCode,
 } from "@/lib/api/hooks";
 import type { EntityKey, EntityMap, ID } from "@/lib/api/types";
 import type { EntityConfig } from "@/lib/entities";
 import { EntityFormDialog, ConfirmDialog } from "./EntityFormDialog";
 import { downloadCSV, pickAndReadCSV, toCSV } from "@/lib/csv";
 import { toast } from "sonner";
+
+
 
 // ---------- Pill (kept for back-compat) ----------
 export function Pill({
@@ -386,7 +392,10 @@ function CrudModulePage<K extends EntityKey>({
     pageSize,
     filter,
   });
-
+  const nextCustomerCode =
+  config.key === "customers"
+    ? useNextCustomerCode()
+    : null;
   const create = useCreateEntity(config.key, config.singular);
   const update = useUpdateEntity(config.key, config.singular);
   const remove = useDeleteEntity(config.key, config.singular);
@@ -470,9 +479,11 @@ function CrudModulePage<K extends EntityKey>({
   const init: Record<string, unknown> = { ...(config.initial as object) };
 
   if (config.codePrefix) {
-    if (config.entity === "customers") {
-      init.customer_code = "";
-    } else if (config.entity === "importJobs") {
+    
+    if (config.key === "customers") {
+    (init as Record<string, unknown>)["customer_code"] =
+  nextCustomerCode?.data?.customer_code ?? "";
+}else if (config.key === "importJobs") {
       init.jobNo = "";
     } else {
       const existing = (listQuery.data?.rows ?? []).map(
@@ -793,8 +804,16 @@ function CrudModulePage<K extends EntityKey>({
         defaultValues={initialForCreate}
         submitLabel={`Create ${config.singular}`}
         onSubmit={async (vals) => {
-          await create.mutateAsync(vals);
-        }}
+  try {
+    return await create.mutateAsync(vals);
+  } catch (error: any) {
+    toast.error(
+      error?.message || "Unable to create record."
+    );
+
+    throw error;
+  }
+}}
       />
 
       <EntityFormDialog<EntityMap[K]>
