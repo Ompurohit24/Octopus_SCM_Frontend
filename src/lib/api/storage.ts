@@ -1,7 +1,7 @@
 
 import type { EntityKey, EntityMap, ID } from "./types";
 
-const API = "const API = import.meta.env.VITE_API_URL;";
+const API = import.meta.env.VITE_API_URL;
  
 // const API = "https://octopus-scm-backend.onrender.com";
 const TOKEN_KEY = "access_token";
