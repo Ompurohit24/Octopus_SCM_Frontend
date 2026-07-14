@@ -3,6 +3,7 @@ import { useId, useState, useEffect, useMemo, type ReactNode } from "react";
 import { Logo } from "@/components/octopus/Logo";
 import { useForm, Controller } from "react-hook-form";
 import type { FieldDef } from "@/lib/entities";
+import { useRef } from "react";
 // import { useEntityAll } from "@/lib/api/hooks";
 import type { EntityKey } from "@/lib/api/types";
 import {
@@ -119,17 +120,54 @@ export function EntityFormDialog<T>({
 } = useForm<Record<string, unknown>>({
     defaultValues: buildDefaults<T>(fields, defaultValues),
   });
-
+console.log("EntityFormDialog mounted");
 const { data: nextCustomerCode } = useNextCustomerCode();
 const { data: nextImportJobNumber } = useNextImportJobNumber();
 
 const [errorDialog, setErrorDialog] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
+const initialized = useRef(false);
+const hasAutoScrolled = useRef(false);
 
-  useEffect(() => {
-    if (open) reset(buildDefaults<T>(fields, defaultValues));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultValues]);
+
+
+
+
+
+// useEffect(() => {
+//   if (!open) {
+//     hasAutoScrolled.current = false;
+//     return;
+//   }
+
+//   if (!currentStage) return;
+
+//   if (hasAutoScrolled.current) return;
+
+//   hasAutoScrolled.current = true;
+
+//   requestAnimationFrame(() => {
+//     document
+//       .getElementById(`workflow-${currentStage}`)
+//       ?.scrollIntoView({
+//         behavior: "smooth",
+//         block: "center",
+//       });
+//   });
+// }, [open, currentStage]);
+
+//   useEffect(() => {
+//   if (!open) {
+//     initialized.current = false;
+//     return;
+//   }
+
+//   if (initialized.current) return;
+
+//   initialized.current = true;
+
+//   reset(buildDefaults<T>(fields, defaultValues));
+// }, [open, reset]);
 
   const watched = watch();
   const currentStage = useMemo(() => {
@@ -144,40 +182,7 @@ const [errorMessage, setErrorMessage] = useState("");
   return IMPORT_WORKFLOW[IMPORT_WORKFLOW.length - 1];
 }, [title, watched]);
 
-useEffect(() => {
-  if (!open) return;
 
-  if (title === "New Customer") {
-    reset(buildDefaults<T>(fields, defaultValues));
-
-    if (nextCustomerCode) {
-      setValue("customer_code", nextCustomerCode, {
-        shouldDirty: false,
-        shouldValidate: false,
-      });
-    }
-  }
-
-  if (title === "New Import Job") {
-    reset(buildDefaults<T>(fields, defaultValues));
-
-    if (nextImportJobNumber) {
-      setValue("jobNo", nextImportJobNumber, {
-        shouldDirty: false,
-        shouldValidate: false,
-      });
-    }
-  }
-}, [
-  open,
-  title,
-  nextCustomerCode,
-  nextImportJobNumber,
-  reset,
-  setValue,
-  fields,
-  defaultValues,
-]);
 
 const currentStageIndex = IMPORT_WORKFLOW.indexOf(currentStage ?? "");
 

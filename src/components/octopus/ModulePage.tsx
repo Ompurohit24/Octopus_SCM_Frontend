@@ -822,7 +822,7 @@ function CrudModulePage<K extends EntityKey>({
         title={`Edit ${config.singular}`}
         fields={config.fields}
         defaultValues={editRow ?? undefined}
-        submitLabel="Save changes"
+        submitLabel="Save changes"  
         onSubmit={async (vals) => {
           if (!editRow) return;
           await update.mutateAsync({ id: (editRow as { id: ID }).id, patch: vals });

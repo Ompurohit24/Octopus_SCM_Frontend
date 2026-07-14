@@ -276,7 +276,7 @@ fields: [
   label: "Mobile Number",
   type: "text",
   required: true,
-  placeholder: "9876543210",
+  // placeholder: "9876543210",
 },
   {
     name: "gstin",
