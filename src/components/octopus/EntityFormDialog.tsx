@@ -111,7 +111,13 @@ export function EntityFormDialog<T>({
 }: Props<T>) {
   console.log("EntityFormDialog render");
   const formId = useId();
- const {
+
+const stableDefaults = useMemo(
+  () => buildDefaults<T>(fields, defaultValues),
+  [fields, defaultValues],
+);
+
+const {
   register,
   handleSubmit,
   reset,
@@ -120,8 +126,9 @@ export function EntityFormDialog<T>({
   setValue,
   formState: { errors, isSubmitting },
 } = useForm<Record<string, unknown>>({
-    defaultValues: buildDefaults<T>(fields, defaultValues),
-  });
+  defaultValues: stableDefaults,
+});
+
 console.log("EntityFormDialog mounted");
 const { data: nextCustomerCode } = useNextCustomerCode();
 const { data: nextImportJobNumber } = useNextImportJobNumber();
@@ -132,44 +139,14 @@ const initialized = useRef(false);
 const hasAutoScrolled = useRef(false);
 
 
+useEffect(() => {
+  if (!open) {
+    initialized.current = false;
+    return;
+  }
 
-
-
-
-// useEffect(() => {
-//   if (!open) {
-//     hasAutoScrolled.current = false;
-//     return;
-//   }
-
-//   if (!currentStage) return;
-
-//   if (hasAutoScrolled.current) return;
-
-//   hasAutoScrolled.current = true;
-
-//   requestAnimationFrame(() => {
-//     document
-//       .getElementById(`workflow-${currentStage}`)
-//       ?.scrollIntoView({
-//         behavior: "smooth",
-//         block: "center",
-//       });
-//   });
-// }, [open, currentStage]);
-
-//   useEffect(() => {
-//   if (!open) {
-//     initialized.current = false;
-//     return;
-//   }
-
-//   if (initialized.current) return;
-
-//   initialized.current = true;
-
-//   reset(buildDefaults<T>(fields, defaultValues));
-// }, [open, reset]);
+  reset(buildDefaults<T>(fields, defaultValues));
+}, [open, defaultValues, fields, reset]);
 
   const watched = watch();
   const currentStage = useMemo(() => {
@@ -265,6 +242,7 @@ let saved;
 
 try {
   saved = await onSubmit(cleaned as Partial<T>);
+  console.log("SAVE RESPONSE", saved);
 } catch (e) {
   setErrorMessage(
     e instanceof Error ? e.message : "Operation failed."
