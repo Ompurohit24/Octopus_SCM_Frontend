@@ -629,12 +629,8 @@ async bulkCreate<K extends EntityKey>(
 
   return result;
 },
-async getNextCustomerCode(): Promise<string> {
-  const response = await request<{
-    customer_code: string;
-  }>("/customers/next-code");
-
-  return response.customer_code;
+async getNextCustomerCode(): Promise<{ customer_code: string }> {
+  return request<{ customer_code: string }>("/customers/next-code");
 },
 
 async getNextImportJobNumber(): Promise<string> {

@@ -97,6 +97,7 @@ function buildDefaults<T>(fields: FieldDef[], initial?: Partial<T>): Record<stri
 }
 
 export function EntityFormDialog<T>({
+  
   open,
   onOpenChange,
   title,
@@ -108,6 +109,7 @@ export function EntityFormDialog<T>({
   onWatchChange,
   banner,
 }: Props<T>) {
+  console.log("EntityFormDialog render");
   const formId = useId();
  const {
   register,

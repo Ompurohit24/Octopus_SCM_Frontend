@@ -824,9 +824,15 @@ function CrudModulePage<K extends EntityKey>({
         defaultValues={editRow ?? undefined}
         submitLabel="Save changes"  
         onSubmit={async (vals) => {
-          if (!editRow) return;
-          await update.mutateAsync({ id: (editRow as { id: ID }).id, patch: vals });
-        }}
+  if (!editRow) {
+    return {} as Partial<EntityMap[K]>;
+  }
+
+  return await update.mutateAsync({
+    id: (editRow as { id: ID }).id,
+    patch: vals,
+  });
+}}
       />
 
       <ConfirmDialog
