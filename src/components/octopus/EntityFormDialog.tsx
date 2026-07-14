@@ -279,7 +279,10 @@ if (title === "New Import Job") {
 }
 
 if (title === "Update Job") {
-    setCreatedImportJob((saved ?? cleaned) as Record<string, unknown>);
+    setCreatedImportJob({
+  ...(cleaned as Record<string, unknown>),
+  ...(saved as Record<string, unknown>),
+});
     setUpdatedImportSuccessDialog(true);
     return;
 }
