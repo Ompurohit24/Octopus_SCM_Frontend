@@ -109,7 +109,7 @@ export function EntityFormDialog<T>({
   onWatchChange,
   banner,
 }: Props<T>) {
-  console.log("EntityFormDialog render");
+  
   const formId = useId();
 
 const stableDefaults = useMemo(
@@ -129,7 +129,7 @@ const {
   defaultValues: stableDefaults,
 });
 
-console.log("EntityFormDialog mounted");
+
 const { data: nextCustomerCode } = useNextCustomerCode();
 const { data: nextImportJobNumber } = useNextImportJobNumber();
 
