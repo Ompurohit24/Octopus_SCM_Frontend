@@ -283,6 +283,8 @@ if (title === "Update Job") {
   ...(cleaned as Record<string, unknown>),
   ...(saved as Record<string, unknown>),
 });
+    console.log("cleaned", cleaned);
+console.log("saved", saved);
     setUpdatedImportSuccessDialog(true);
     return;
 }
