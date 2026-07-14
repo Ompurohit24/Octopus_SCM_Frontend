@@ -377,6 +377,8 @@ function CrudModulePage<K extends EntityKey>({
   const [showFilter, setShowFilter] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createDefaults, setCreateDefaults] =
+  useState<Partial<EntityMap[K]>>();
   const [editRow, setEditRow] = useState<EntityMap[K] | null>(null);
   const [deleteRow, setDeleteRow] = useState<EntityMap[K] | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -392,10 +394,11 @@ function CrudModulePage<K extends EntityKey>({
     pageSize,
     filter,
   });
-  const nextCustomerCode =
-  config.key === "customers"
-    ? useNextCustomerCode()
-    : null;
+  const nextCustomerCode = useNextCustomerCode();
+  // const nextCustomerCode =
+  // config.key === "customers"
+  //   ? useNextCustomerCode()
+  //   : null;
   const create = useCreateEntity(config.key, config.singular);
   const update = useUpdateEntity(config.key, config.singular);
   const remove = useDeleteEntity(config.key, config.singular);
@@ -457,9 +460,40 @@ function CrudModulePage<K extends EntityKey>({
     }
   }
 
-  function openCreate() {
-    setCreateOpen(true);
+function buildCreateDefaults(): Partial<EntityMap[K]> {
+  const init: Record<string, unknown> = {
+    ...(config.initial as object),
+  };
+
+  if (config.codePrefix) {
+    if (config.key === "customers") {
+      init["customer_code"] =
+        nextCustomerCode?.data?.customer_code ?? "";
+    } else if (config.key === "importJobs") {
+      init.jobNo = "";
+    } else {
+      const existing = (listQuery.data?.rows ?? []).map(
+        (r) =>
+          (r as unknown as Record<string, string>)[
+            config.codePrefix!.field
+          ] ?? "",
+      );
+
+      init[config.codePrefix.field] = nextCode(
+        config.codePrefix.prefix,
+        config.codePrefix.pad ?? 4,
+        existing,
+      );
+    }
   }
+
+  return init as Partial<EntityMap[K]>;
+}
+
+function openCreate() {
+  setCreateDefaults(buildCreateDefaults());
+  setCreateOpen(true);
+}
 
   // const initialForCreate = (() => {
   //   const init: Record<string, unknown> = { ...(config.initial as object) };
@@ -475,32 +509,32 @@ function CrudModulePage<K extends EntityKey>({
   //   }
   //   return init as Partial<EntityMap[K]>;
   // })();  
-  const initialForCreate = (() => {
-  const init: Record<string, unknown> = { ...(config.initial as object) };
+//   const initialForCreate = (() => {
+//   const init: Record<string, unknown> = { ...(config.initial as object) };
 
-  if (config.codePrefix) {
+//   if (config.codePrefix) {
     
-    if (config.key === "customers") {
-    (init as Record<string, unknown>)["customer_code"] =
-  nextCustomerCode?.data?.customer_code ?? "";
-}else if (config.key === "importJobs") {
-      init.jobNo = "";
-    } else {
-      const existing = (listQuery.data?.rows ?? []).map(
-        (r) =>
-          (r as unknown as Record<string, string>)[config.codePrefix!.field] ?? "",
-      );
+//     if (config.key === "customers") {
+//     (init as Record<string, unknown>)["customer_code"] =
+//   nextCustomerCode?.data?.customer_code ?? "";
+// }else if (config.key === "importJobs") {
+//       init.jobNo = "";
+//     } else {
+//       const existing = (listQuery.data?.rows ?? []).map(
+//         (r) =>
+//           (r as unknown as Record<string, string>)[config.codePrefix!.field] ?? "",
+//       );
 
-      init[config.codePrefix.field] = nextCode(
-        config.codePrefix.prefix,
-        config.codePrefix.pad ?? 4,
-        existing,
-      );
-    }
-  }
+//       init[config.codePrefix.field] = nextCode(
+//         config.codePrefix.prefix,
+//         config.codePrefix.pad ?? 4,
+//         existing,
+//       );
+//     }
+//   }
 
-  return init as Partial<EntityMap[K]>;
-})();
+//   return init as Partial<EntityMap[K]>;
+// })();
 
   return (
     <div className="space-y-6 p-6 lg:p-8" onClick={() => setOpenMenu(null)}>
@@ -798,10 +832,16 @@ function CrudModulePage<K extends EntityKey>({
 
       <EntityFormDialog<EntityMap[K]>
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+  setCreateOpen(open);
+
+  if (!open) {
+    setCreateDefaults(undefined);
+  }
+}}
         title={`New ${config.singular}`}
         fields={config.fields}
-        defaultValues={initialForCreate}
+        defaultValues={createDefaults}
         submitLabel={`Create ${config.singular}`}
         onSubmit={async (vals) => {
   try {
