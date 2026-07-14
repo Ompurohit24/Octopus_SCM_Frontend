@@ -146,9 +146,9 @@ const defaults = useMemo<Partial<ImportChecklist>>(
 
    onSubmit={async (vals) => {
   if (!selectedJob) {
-    toast.error("Please select a job.");
-    return;
-  }
+  toast.error("Please select a job.");
+  throw new Error("Please select a job.");
+}
 
  const payload: Partial<ImportChecklist> & {
   job_id: string;
@@ -165,21 +165,24 @@ const defaults = useMemo<Partial<ImportChecklist>>(
   blNo: selectedJob.blNo,
 };
 
-  if (existing) {
-    console.log("Selected Job:", selectedJob);
-console.log("Existing Workflow:", existing);
-console.log("Loaded Workflows:", checklists.data);
-    await update.mutateAsync({
-      id: existing.id,
-      patch: payload,
-    });
+ if (existing) {
+  await update.mutateAsync({
+    id: existing.id,
+    patch: payload,
+  });
 
-    // toast.success("Workflow updated successfully.");
-  } else {
-    await create.mutateAsync(payload);
+  return {
+    ...selectedJob,
+    ...payload,
+  };
+} else {
+  await create.mutateAsync(payload);
 
-    toast.success("Workflow created successfully.");
-  }
+  return {
+    ...selectedJob,
+    ...payload,
+  };
+}
 }}
       />
     </>
