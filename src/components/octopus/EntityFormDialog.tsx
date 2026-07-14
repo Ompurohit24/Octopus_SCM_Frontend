@@ -279,14 +279,14 @@ if (title === "New Import Job") {
 }
 
 if (title === "Update Job") {
-    setCreatedImportJob({
-  ...(cleaned as Record<string, unknown>),
-  ...(saved as Record<string, unknown>),
-});
-    console.log("cleaned", cleaned);
-console.log("saved", saved);
-    setUpdatedImportSuccessDialog(true);
-    return;
+  console.log("createdImportJob", saved);
+
+  setCreatedImportJob({
+    ...(saved as Record<string, unknown>),
+  });
+
+  setUpdatedImportSuccessDialog(true);
+  return;
 }
 
 onOpenChange(false);
