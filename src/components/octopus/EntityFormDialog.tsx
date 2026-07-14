@@ -242,7 +242,7 @@ let saved;
 
 try {
   saved = await onSubmit(cleaned as Partial<T>);
-  console.log("SAVE RESPONSE", saved);
+  
 } catch (e) {
   setErrorMessage(
     e instanceof Error ? e.message : "Operation failed."
@@ -407,7 +407,12 @@ onOpenChange(false);
 
 ) : (
                   <input
-                    type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+  type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+  min={
+    f.name === "eta"
+      ? new Date().toISOString().split("T")[0]
+      : undefined
+  }
                     placeholder={f.placeholder}
                     // readOnly={f.readOnly} 
                     readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
