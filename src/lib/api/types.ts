@@ -159,6 +159,7 @@ export interface ImportChecklist {
   job_number?: string;
 
   jobNo?: string;
+  blNo?: string;
 
   checklist?: "Pending" | "Done";
 

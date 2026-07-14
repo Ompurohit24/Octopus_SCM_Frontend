@@ -58,8 +58,12 @@ const existing = useMemo(() => {
 }, [checklists.data, selectedJob]);
 
 const defaults = useMemo<Partial<ImportChecklist>>(
-  () => existing ?? (selectedJobNo ? { jobNo: selectedJobNo } : {}),
-  [existing, selectedJobNo],
+  () => ({
+    ...(existing ?? {}),
+    jobNo: selectedJob?.jobNo ?? selectedJobNo,
+    blNo: selectedJob?.blNo,
+  }),
+  [existing, selectedJob, selectedJobNo],
 );
 
   const banner = selectedJob ? (
@@ -146,19 +150,20 @@ const defaults = useMemo<Partial<ImportChecklist>>(
     return;
   }
 
-  const payload: Partial<ImportChecklist> & {
-    job_id: string;
-    job_number: string;
-  } = {
-    ...vals,
+ const payload: Partial<ImportChecklist> & {
+  job_id: string;
+  job_number: string;
+} = {
+  ...vals,
 
-    // Backend fields
-    job_id: selectedJob.id,
-    job_number: selectedJob.jobNo,
+  // Backend fields
+  job_id: selectedJob.id,
+  job_number: selectedJob.jobNo,
 
-    // Frontend compatibility
-    jobNo: selectedJob.jobNo,
-  };
+  // Frontend fields
+  jobNo: selectedJob.jobNo,
+  blNo: selectedJob.blNo,
+};
 
   if (existing) {
     console.log("Selected Job:", selectedJob);
