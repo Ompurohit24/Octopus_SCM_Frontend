@@ -392,8 +392,7 @@ if (key === "importChecklists") {
 
   const payload = toImportWorkflowPayload(workflow);
 
-console.log("UPDATE WORKFLOW PAYLOAD");
-console.table(payload);
+
 
   const item = await request<any>(
     `/import-workflows/${workflow.job_id}`,
@@ -513,8 +512,7 @@ async update<K extends EntityKey>(
 
    const payload = toImportWorkflowPayload(workflow);
 
-console.log("UPDATE WORKFLOW PAYLOAD");
-console.log(payload);
+
 
 const item = await request<any>(
   `/import-workflows/${workflow.job_id}`,
