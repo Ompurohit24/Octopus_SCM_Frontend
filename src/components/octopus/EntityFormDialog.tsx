@@ -747,7 +747,11 @@ function DynamicSelect({
     locked: boolean;
 }) {
   const src = field.optionsSource;
-  const query = useEntityAll((src?.entity ?? "customers") as EntityKey);
+  // const queryClient = useQueryClient();
+
+const query = useEntityAll(
+  (src?.entity ?? "customers") as EntityKey
+);
   const [customOpts, setCustomOpts] = useState<string[]>(() =>
     field.creatable ? loadCustomOptions(field.name) : [],
   );
@@ -757,14 +761,19 @@ function DynamicSelect({
   const [deleteDialog, setDeleteDialog] = useState(false);
 const [selectedLineName, setSelectedLineName] = useState("");
   const [lineNames, setLineNames] = useState<string[]>([]);
+const [dropdownLineNames, setDropdownLineNames] = useState<string[]>([]);
 const [newLineName, setNewLineName] = useState("");
 
 
 useEffect(() => {
-  if (!showManage) return;
-
   apiClient.getLineNames().then((items) => {
-    setLineNames(items.map((x) => x.name));
+    const names = items.map((x) => x.name);
+
+    setDropdownLineNames(names);
+
+    if (showManage) {
+      setLineNames(names);
+    }
   });
 }, [showManage]);
 
@@ -786,9 +795,22 @@ useEffect(() => {
         ).values(),
       ).sort((a, b) => a.label.localeCompare(b.label));
     }
-    const base = [...(field.options ?? []), ...customOpts];
-    return Array.from(new Set(base)).map((o) => ({ value: o, label: o }));
-  }, [src, query.data, field.options, customOpts]);
+    const base =
+  field.name === "lineName"
+    ? dropdownLineNames
+    : [...(field.options ?? []), ...customOpts];
+
+return Array.from(new Set(base)).map((o) => ({
+  value: o,
+  label: o,
+}));
+  }, [
+  src,
+  query.data,
+  field.options,
+  customOpts,
+  dropdownLineNames,
+]);
 
   const opts = dynamicOptions;
 
@@ -895,12 +917,16 @@ const selectedValue =
 
         if (!value) return;
 
-        await apiClient.createLineName(value);
+      await apiClient.createLineName(value);
 
-        setNewLineName("");
+const items = await apiClient.getLineNames();
+const names = items.map((x) => x.name);
 
-        const items = await apiClient.getLineNames();
-        setLineNames(items.map((x) => x.name));
+setLineNames(names);
+setDropdownLineNames(names);
+
+
+setNewLineName("");
       }}
       className="rounded-md bg-primary px-4 py-2 text-white"
     >
@@ -951,10 +977,15 @@ const selectedValue =
   confirmLabel="Delete"
   destructive
   onConfirm={async () => {
-    await apiClient.deleteLineName(selectedLineName);
+ await apiClient.deleteLineName(selectedLineName);
 
-    const items = await apiClient.getLineNames();
-    setLineNames(items.map((x) => x.name));
+const items = await apiClient.getLineNames();
+const names = items.map((x) => x.name);
+
+setLineNames(names);
+setDropdownLineNames(names);
+
+
   }}
 />
   </>
