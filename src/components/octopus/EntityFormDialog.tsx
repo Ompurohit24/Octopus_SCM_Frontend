@@ -68,8 +68,7 @@ function loadCustomOptions(field: string): string[] {
     return [];
   }
 }
-const [errorDialog, setErrorDialog] = useState(false);
-const [errorMessage, setErrorMessage] = useState("");
+
 function saveCustomOption(field: string, value: string) {
   if (typeof window === "undefined") return;
   try {
@@ -385,16 +384,15 @@ onOpenChange(false);
     locked={!!f.readOnly}
   />
   ) : f.type === "select" ? (
-                  <DynamicSelect
-
-                  
-    field={f}
-    className={baseInput}
-    // locked={f.readOnly || isWorkflowFieldLocked(f.name)}
-    locked={!!f.readOnly}
-    register={register(f.name, {
-        required: f.required ? `${f.label} is required` : false,
-    })}
+    <DynamicSelect
+  field={f}
+  className={baseInput}
+  locked={!!f.readOnly}
+  register={register(f.name, {
+    required: f.required ? `${f.label} is required` : false,
+  })}
+  setErrorDialog={setErrorDialog}
+  setErrorMessage={setErrorMessage}
 />
                 ) : f.type === "textarea" ? (
                   <textarea
@@ -737,15 +735,19 @@ export function ConfirmDialog({
 type RegisterReturn = ReturnType<ReturnType<typeof useForm<Record<string, unknown>>>["register"]>;
 
 function DynamicSelect({
-    field,
-    className,
-    register,
-    locked,
+  field,
+  className,
+  register,
+  locked,
+  setErrorDialog,
+  setErrorMessage,
 }: {
-    field: FieldDef;
-    className: string;
-    register: RegisterReturn;
-    locked: boolean;
+  field: FieldDef;
+  className: string;
+  register: RegisterReturn;
+  locked: boolean;
+  setErrorDialog: (v: boolean) => void;
+  setErrorMessage: (v: string) => void;
 }) {
   const src = field.optionsSource;
   // const queryClient = useQueryClient();
@@ -988,26 +990,30 @@ setNewLineName("");
       confirmLabel="Delete"
       destructive
       onConfirm={async () => {
-        try {
-  await apiClient.deleteLineName(selectedLineName);
+  try {
+    await apiClient.deleteLineName(selectedLineName);
 
-  const items = await apiClient.getLineNames();
-  const names = items.map((x) => x.name);
+    const items = await apiClient.getLineNames();
+    const names = items.map((x) => x.name);
 
-  setLineNames(names);
-  setDropdownLineNames(names);
+    setLineNames(names);
+    setDropdownLineNames(names);
 
-  setSelectedLineName("");
-} catch (e) {
-  const message =
-    e instanceof Error
-      ? e.message
-      : "Cannot delete. This Line Name is already used in Import Jobs.";
+    setSelectedLineName("");
+    setDeleteDialog(false);   // Close only on success
 
-  setErrorMessage(message);
-  setErrorDialog(true);
-}
-      }}
+  } catch (e) {
+    const message =
+      e instanceof Error
+        ? e.message
+        : "Cannot delete. This Line Name is already used in Import Jobs.";
+
+    setErrorMessage(message);
+    setErrorDialog(true);
+
+    // Leave delete dialog open
+  }
+}}
     />
   </>
 )}
