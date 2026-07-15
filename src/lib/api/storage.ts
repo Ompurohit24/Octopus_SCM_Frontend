@@ -654,6 +654,18 @@ async createLineName(name: string) {
   });
 },
 
+async updateLineName(
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  await request(
+    `/masters/line-names/${encodeURIComponent(oldName)}?new_name=${encodeURIComponent(newName)}`,
+    {
+      method: "PUT",
+    }
+  );
+},
+
 async deleteLineName(name: string) {
   return request(
     "/masters/line-names/" + encodeURIComponent(name),

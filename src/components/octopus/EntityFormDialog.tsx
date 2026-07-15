@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { ChevronsUpDown, Check } from "lucide-react";
 // import { useEntityAll } from "@/lib/api/hooks";
+import { Pencil } from "lucide-react";
 import type { EntityKey } from "@/lib/api/types";
 import {
   useEntityAll,
@@ -767,7 +768,11 @@ const query = useEntityAll(
 const [selectedLineName, setSelectedLineName] = useState("");
   const [lineNames, setLineNames] = useState<string[]>([]);
 const [dropdownLineNames, setDropdownLineNames] = useState<string[]>([]);
+const [editDialog, setEditDialog] = useState(false);
+const [editingLineName, setEditingLineName] = useState("");
 const [newLineName, setNewLineName] = useState("");
+const [editLineName, setEditLineName] = useState("");
+
 
 
 useEffect(() => {
@@ -940,23 +945,34 @@ setNewLineName("");
   </div>
 
   {lineNames.map((name) => (
-    <div
-      key={name}
-      className="flex items-center justify-between rounded-lg border px-3 py-2"
-    >
+  <div
+    key={name}
+    className="flex items-center justify-between rounded-lg border px-3 py-2"
+  >
       <span>{name}</span>
+
+      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          setEditingLineName(name);
+setEditLineName(name);
+setEditDialog(true);
+        }}
+      >
+        <Pencil className="h-4 w-4 text-blue-600" />
+      </button>
 
       <button
         type="button"
-       onClick={() => {
-        // console.log("Delete clicked", name);
-
-  setSelectedLineName(name);
-  setDeleteDialog(true);
-}}
+        onClick={() => {
+          setSelectedLineName(name);
+          setDeleteDialog(true);
+        }}
       >
         <Trash2 className="h-4 w-4 text-red-600" />
       </button>
+    </div>
     </div>
   ))}
 
@@ -979,6 +995,75 @@ setNewLineName("");
         </div>
       </div>
     )}
+{editDialog && (
+  <div className="fixed inset-0 z-[250] grid place-items-center bg-black/40">
+    <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+
+      <h3 className="text-lg font-semibold">
+        Edit Line Name
+      </h3>
+
+      <input
+        value={editLineName}
+        onChange={(e) => setEditLineName(e.target.value)}
+        className="mt-4 w-full rounded-md border px-3 py-2"
+      />
+
+      <div className="mt-5 flex justify-end gap-2">
+
+        <button
+          type="button"
+          onClick={() => {
+            setEditDialog(false);
+            setEditingLineName("");
+            setEditLineName("");
+          }}
+          className="rounded-lg border px-4 py-2"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await apiClient.updateLineName(
+                editingLineName,
+                editLineName.trim(),
+              );
+
+              const items = await apiClient.getLineNames();
+              const names = items.map((x) => x.name);
+
+              setLineNames(names);
+              setDropdownLineNames(names);
+
+              setEditDialog(false);
+              setEditingLineName("");
+              setEditLineName("");
+              
+
+            } catch (e) {
+              setErrorTitle("Update Failed");
+              setErrorMessage(
+                e instanceof Error
+                  ? e.message
+                  : "Unable to update Line Name."
+              );
+              setErrorDialog(true);
+            }
+          }}
+          className="rounded-lg bg-primary px-4 py-2 text-white"
+        >
+          Save
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+
 
   {showManage && (
   <>
