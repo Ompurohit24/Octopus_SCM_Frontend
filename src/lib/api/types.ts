@@ -132,6 +132,7 @@ export interface ImportJob {
   jobNo: string;
   blNo?: string;
   blDate?: string;
+  beNo?: string;
   invoiceNo?: string;
   invoiceDate?: string;
   noOfCntr?: number;

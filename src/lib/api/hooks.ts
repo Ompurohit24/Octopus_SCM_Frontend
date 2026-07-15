@@ -34,8 +34,10 @@ export function useNextImportJobNumber() {
   });
 }
 
+
+
 export function useEntityAll<K extends EntityKey>(key: K) {
-  return useQuery({
+  return useQuery<EntityMap[K][]>({
     queryKey: qk.all(key),
     queryFn: () => apiClient.all(key),
     staleTime: 10_000,

@@ -4,6 +4,10 @@ import { Logo } from "@/components/octopus/Logo";
 import { useForm, Controller } from "react-hook-form";
 import type { FieldDef } from "@/lib/entities";
 import { useRef } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { ChevronsUpDown, Check } from "lucide-react";
 // import { useEntityAll } from "@/lib/api/hooks";
 import type { EntityKey } from "@/lib/api/types";
 import {
@@ -11,6 +15,9 @@ import {
   useNextCustomerCode,
   useNextImportJobNumber,
 } from "@/lib/api/hooks";
+import { Trash2 } from "lucide-react";
+import { apiClient } from "@/lib/api/storage";
+import SearchableJobSelect from "@/components/octopus/SearchableJobSelect";
 
 interface Props<T> {
   open: boolean;
@@ -350,8 +357,17 @@ onOpenChange(false);
                       />
                     )}
                   />
-                ) : f.type === "select" ? (
+                ) : f.name === "jobNo" && title === "Update Job" ? (
+                   <SearchableJobSelect
+    field={f}
+    className={baseInput}
+    control={control}
+    locked={!!f.readOnly}
+  />
+  ) : f.type === "select" ? (
                   <DynamicSelect
+
+                  
     field={f}
     className={baseInput}
     // locked={f.readOnly || isWorkflowFieldLocked(f.name)}
@@ -718,6 +734,20 @@ function DynamicSelect({
   );
   const [showAdd, setShowAdd] = useState(false);
   const [newOpt, setNewOpt] = useState("");
+  const [showManage, setShowManage] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+const [selectedLineName, setSelectedLineName] = useState("");
+  const [lineNames, setLineNames] = useState<string[]>([]);
+const [newLineName, setNewLineName] = useState("");
+
+
+useEffect(() => {
+  if (!showManage) return;
+
+  apiClient.getLineNames().then((items) => {
+    setLineNames(items.map((x) => x.name));
+  });
+}, [showManage]);
 
   type Opt = { value: string; label: string };
   const dynamicOptions: Opt[] = useMemo(() => {
@@ -742,6 +772,11 @@ function DynamicSelect({
   }, [src, query.data, field.options, customOpts]);
 
   const opts = dynamicOptions;
+
+  const [open, setOpen] = useState(false);
+
+const selectedValue =
+  typeof register.name === "string" ? register.name : "";
   return (
     <div className="space-y-1">
       <select
@@ -758,7 +793,9 @@ function DynamicSelect({
           </option>
         ))}
       </select>
-      {field.creatable && !field.readOnly && (
+      {field.creatable &&
+ !field.readOnly &&
+ field.name !== "lineName" && (
         showAdd ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -803,6 +840,108 @@ function DynamicSelect({
           </button>
         )
       )}
+
+  {field.name === "lineName" && (
+  <>
+    <button
+      type="button"
+      onClick={() => setShowManage(true)}
+      className="text-[11px] font-medium text-brand hover:underline"
+    >
+      ⚙ Manage Line Names
+    </button>
+
+    {showManage && (
+      <div className="fixed inset-0 z-[120] grid place-items-center bg-black/40">
+        <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+
+          <h3 className="text-lg font-semibold">
+            Manage Line Names
+          </h3>
+
+      <div className="mt-4 space-y-3">
+
+  <div className="flex gap-2">
+    <input
+      value={newLineName}
+      onChange={(e) => setNewLineName(e.target.value)}
+      placeholder="New Line Name"
+      className="flex-1 rounded-md border px-3 py-2 text-sm"
+    />
+
+    <button
+      type="button"
+      onClick={async () => {
+        const value = newLineName.trim();
+
+        if (!value) return;
+
+        await apiClient.createLineName(value);
+
+        setNewLineName("");
+
+        const items = await apiClient.getLineNames();
+        setLineNames(items.map((x) => x.name));
+      }}
+      className="rounded-md bg-primary px-4 py-2 text-white"
+    >
+      Add
+    </button>
+  </div>
+
+  {lineNames.map((name) => (
+    <div
+      key={name}
+      className="flex items-center justify-between rounded-lg border px-3 py-2"
+    >
+      <span>{name}</span>
+
+      <button
+        type="button"
+       onClick={() => {
+  setSelectedLineName(name);
+  setDeleteDialog(true);
+}}
+      >
+        <Trash2 className="h-4 w-4 text-red-600" />
+      </button>
+    </div>
+  ))}
+
+</div>
+
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowManage(false)}
+              className="rounded-lg border px-4 py-2"
+            >
+              Close
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )}
+
+    <ConfirmDialog
+  open={deleteDialog}
+  onOpenChange={setDeleteDialog}
+  title="Delete Line Name"
+  description={`Are you sure you want to delete "${selectedLineName}"?`}
+  confirmLabel="Delete"
+  destructive
+  onConfirm={async () => {
+    await apiClient.deleteLineName(selectedLineName);
+
+    const items = await apiClient.getLineNames();
+    setLineNames(items.map((x) => x.name));
+  }}
+/>
+  </>
+
+  
+)}
     </div>
   );
 }

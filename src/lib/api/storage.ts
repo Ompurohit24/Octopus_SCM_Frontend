@@ -278,6 +278,7 @@ async list<K extends EntityKey>(
         // Frontend fields
         jobNo: item.job_number,
         blNo: item.bl_no,
+        beNo: item.be_no,
         blDate: item.bl_date,
 
         invoiceNo: item.invoice_no,
@@ -442,6 +443,7 @@ if (key === "importChecklists") {
     payload = {
       job_no: input.jobNo,
       bl_no: input.blNo,
+      beNo: input.be_no,
       bl_date: input.blDate,
       invoice_no: input.invoiceNo,
       invoice_date: input.invoiceDate,
@@ -562,6 +564,7 @@ return fromImportWorkflow(item) as unknown as EntityMap[K];
 
       jobNo: item.job_number,
       blNo: item.bl_no,
+      beNo: item.be_no,
       blDate: item.bl_date,
 
       invoiceNo: item.invoice_no,
@@ -639,6 +642,25 @@ async getNextImportJobNumber(): Promise<string> {
   }>("/import-jobs/next-number");
 
   return response.job_number;
+},
+
+async getLineNames(): Promise<{ name: string }[]> {
+  return request<{ name: string }[]>("/masters/line-names");
+},
+
+async createLineName(name: string) {
+  return request("/masters/line-names?name=" + encodeURIComponent(name), {
+    method: "POST",
+  });
+},
+
+async deleteLineName(name: string) {
+  return request(
+    "/masters/line-names/" + encodeURIComponent(name),
+    {
+      method: "DELETE",
+    },
+  );
 },
 
 };
