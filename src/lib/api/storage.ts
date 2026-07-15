@@ -98,62 +98,85 @@ function toImportWorkflowPayload(workflow: any) {
     igm_date: workflow.igmDate,
     igm_status: workflow.igmStatus,
 
-    // inward_date: workflow.inwardDate,
-
     inward_date: workflow.inwardDate || null,
-
-    // be_no: workflow.beNo,
 
     be_no: workflow.beNo || null,
 
-    // be_date: workflow.beDate, 
-   be_date: workflow.beDate || null,
+    be_date: workflow.beDate || null,
 
     goods_registration: workflow.goodsRegi,
 
-    other_gov_agency: workflow.otherGovAgency,
-    // other_gov_agency_type: workflow.otherGovAgencyType,
+    other_gov_agency:
+      workflow.otherGovAgency === "" ? null : workflow.otherGovAgency,
+
     other_gov_agency_type:
-  typeof workflow.otherGovAgencyType === "string"
-    ? workflow.otherGovAgencyType
-    : null,
-    assessment_type: workflow.assessmentType,
-    cfs_name: workflow.cfsName,
+      typeof workflow.otherGovAgencyType === "string" &&
+      workflow.otherGovAgencyType !== ""
+        ? workflow.otherGovAgencyType
+        : null,
 
-    boe_copy_mailed: workflow.boeCopyMailed,
+    assessment_type:
+      workflow.assessmentType === "" ? null : workflow.assessmentType,
 
-    original_documents: workflow.document,
+    cfs_name:
+      workflow.cfsName === "" ? null : workflow.cfsName,
 
-    co_deface_required: workflow.coDefaceRequired,
-    co_deface: workflow.coDeface,
+    boe_copy_mailed:
+      workflow.boeCopyMailed === "" ? null : workflow.boeCopyMailed,
 
-    duty_payment: workflow.dutyPayment,
+    original_documents:
+      workflow.document === "" ? null : workflow.document,
 
-    out_of_charge: workflow.ooc,
+    co_deface_required:
+      workflow.coDefaceRequired === "" ? null : workflow.coDefaceRequired,
 
-    oc_mail_sent: workflow.ocMail,
+    co_deface:
+      workflow.coDeface === "" ? null : workflow.coDeface,
 
-    liner_invoice_received: workflow.linerInvoice,
+    duty_payment:
+      workflow.dutyPayment === "" ? null : workflow.dutyPayment,
 
-    liner_payment: workflow.linerPayment,
+    out_of_charge:
+      workflow.ooc === "" ? null : workflow.ooc,
 
-    payment_confirmation: workflow.paymentConfirm,
+    oc_mail_sent:
+      workflow.ocMail === "" ? null : workflow.ocMail,
 
-    do_received: workflow.doReceived,
-    // do_validity: workflow.doValidity, 
-    do_validity: workflow.doValidity || null,
-    do_type: workflow.doProcess,
+    liner_invoice_received:
+      workflow.linerInvoice === "" ? null : workflow.linerInvoice,
 
-    transportation: workflow.transportation,
-    transporter: workflow.transporter,
+    liner_payment:
+      workflow.linerPayment === "" ? null : workflow.linerPayment,
 
-    empty_container_return: workflow.performaInvoice,
+    payment_confirmation:
+      workflow.paymentConfirm === "" ? null : workflow.paymentConfirm,
 
-    container_unloaded: workflow.cfsPayment,
+    do_received:
+      workflow.doReceived === "" ? null : workflow.doReceived,
 
-    detention: workflow.delivery,
+    do_validity:
+      workflow.doValidity || null,
 
-    job_closed: workflow.vendorInvoices,
+    do_type:
+      workflow.doProcess === "" ? null : workflow.doProcess,
+
+    transportation:
+      workflow.transportation === "" ? null : workflow.transportation,
+
+    transporter:
+      workflow.transporter === "" ? null : workflow.transporter,
+
+    empty_container_return:
+      workflow.performaInvoice === "" ? null : workflow.performaInvoice,
+
+    container_unloaded:
+      workflow.cfsPayment === "" ? null : workflow.cfsPayment,
+
+    detention:
+      workflow.delivery === "" ? null : workflow.delivery,
+
+    job_closed:
+      workflow.vendorInvoices === "" ? null : workflow.vendorInvoices,
 
     remarks: workflow.remarks,
   };
@@ -393,10 +416,11 @@ if (key === "importChecklists") {
 
   const payload = toImportWorkflowPayload(workflow);
 
-
+  console.log("CREATE PAYLOAD");
+console.log(JSON.stringify(payload, null, 2));
 
   const item = await request<any>(
-    `/import-workflows/${workflow.job_id}`,
+  `/import-workflows/${workflow.job_id}`,
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -514,7 +538,8 @@ async update<K extends EntityKey>(
 
    const payload = toImportWorkflowPayload(workflow);
 
-
+console.log("UPDATE PAYLOAD");
+console.log(JSON.stringify(payload, null, 2));
 
 const item = await request<any>(
   `/import-workflows/${workflow.job_id}`,

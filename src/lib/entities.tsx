@@ -566,7 +566,7 @@ export const importChecklistsConfig: EntityConfig<"importChecklists"> = {
     { name: "igmDate", label: "IGM Date", type: "date", required: false },
     { name: "igmStatus", label: "IGM Status", type: "select", options: PD, default: "Pending", required: false },
     { name: "inwardDate", label: "Inward Date", type: "date", required: false },
-    { name: "beNo", label: "BE No", type: "text" },
+    { name: "beNo", label: "BE No", type: "text",required: false },
     { name: "beDate", label: "BE Date", type: "date" },
     { name: "goodsRegi", label: "Goods Regi", type: "select", options: PD, default: "Pending", required: false },
     { name: "otherGovAgency", label: "Other Gov Agency", type: "select", options: YN, required: false },
