@@ -639,7 +639,7 @@ onOpenChange(false);
 
 
 {errorDialog && (
-  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+  <div className="fixed inset-0 z-[300] grid place-items-center bg-black/40 backdrop-blur-sm">
     <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
 
       <Logo
@@ -1006,7 +1006,7 @@ setNewLineName("");
 
   }  catch (e) {
   setErrorTitle("Cannot Delete");
-
+  setDeleteDialog(false); 
   setErrorMessage(
     e instanceof Error
       ? e.message
