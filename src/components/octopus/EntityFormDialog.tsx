@@ -68,7 +68,8 @@ function loadCustomOptions(field: string): string[] {
     return [];
   }
 }
-
+const [errorDialog, setErrorDialog] = useState(false);
+const [errorMessage, setErrorMessage] = useState("");
 function saveCustomOption(field: string, value: string) {
   if (typeof window === "undefined") return;
   try {
@@ -987,15 +988,25 @@ setNewLineName("");
       confirmLabel="Delete"
       destructive
       onConfirm={async () => {
-        await apiClient.deleteLineName(selectedLineName);
+        try {
+  await apiClient.deleteLineName(selectedLineName);
 
-        const items = await apiClient.getLineNames();
-        const names = items.map((x) => x.name);
+  const items = await apiClient.getLineNames();
+  const names = items.map((x) => x.name);
 
-        setLineNames(names);
-        setDropdownLineNames(names);
+  setLineNames(names);
+  setDropdownLineNames(names);
 
-        setSelectedLineName("");
+  setSelectedLineName("");
+} catch (e) {
+  const message =
+    e instanceof Error
+      ? e.message
+      : "Cannot delete. This Line Name is already used in Import Jobs.";
+
+  setErrorMessage(message);
+  setErrorDialog(true);
+}
       }}
     />
   </>
