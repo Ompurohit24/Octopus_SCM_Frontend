@@ -975,26 +975,30 @@ setNewLineName("");
       </div>
     )}
 
-   {showManage && (
-  <ConfirmDialog
-    open={deleteDialog}
-    onOpenChange={setDeleteDialog}
-    title="Delete Line Name"
-    description={`Are you sure you want to delete "${selectedLineName}"?`}
-    confirmLabel="Delete"
-    destructive
-    onConfirm={async () => {
-      await apiClient.deleteLineName(selectedLineName);
+  {showManage && (
+  <>
+    {console.log("Confirm open =", deleteDialog)}
 
-      const items = await apiClient.getLineNames();
-      const names = items.map((x) => x.name);
+    <ConfirmDialog
+      open={deleteDialog}
+      onOpenChange={setDeleteDialog}
+      title="Delete Line Name"
+      description={`Are you sure you want to delete "${selectedLineName}"?`}
+      confirmLabel="Delete"
+      destructive
+      onConfirm={async () => {
+        await apiClient.deleteLineName(selectedLineName);
 
-      setLineNames(names);
-      setDropdownLineNames(names);
+        const items = await apiClient.getLineNames();
+        const names = items.map((x) => x.name);
 
-      setSelectedLineName("");
-    }}
-  />
+        setLineNames(names);
+        setDropdownLineNames(names);
+
+        setSelectedLineName("");
+      }}
+    />
+  </>
 )}
   </>
 
