@@ -152,8 +152,27 @@ useEffect(() => {
     return;
   }
 
-  reset(buildDefaults<T>(fields, defaultValues));
-}, [open, defaultValues, fields, reset]);
+  const values = buildDefaults<T>(fields, defaultValues);
+
+  if (title === "Update Job") {
+    const today = new Date().toISOString().split("T")[0];
+
+    const dateFields = [
+      "igmDate",
+      "inwardDate",
+      "beDate",
+      "doValidity",
+    ];
+
+    dateFields.forEach((field) => {
+      if (!values[field]) {
+        values[field] = today;
+      }
+    });
+  }
+
+  reset(values);
+}, [open, defaultValues, fields, reset, title]);
 
   const watched = watch();
   const currentStage = useMemo(() => {
