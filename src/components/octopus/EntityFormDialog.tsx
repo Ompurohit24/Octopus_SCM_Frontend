@@ -693,7 +693,7 @@ export function ConfirmDialog({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] grid place-items-center bg-foreground/20 backdrop-blur-sm"
       onClick={() => !busy && onOpenChange(false)}
     >
       <div
@@ -944,7 +944,7 @@ setNewLineName("");
       <button
         type="button"
        onClick={() => {
-        console.log("Delete clicked", name);
+        // console.log("Delete clicked", name);
 
   setSelectedLineName(name);
   setDeleteDialog(true);
@@ -977,7 +977,7 @@ setNewLineName("");
 
   {showManage && (
   <>
-    {console.log("Confirm open =", deleteDialog)}
+    {/* {console.log("Confirm open =", deleteDialog)} */}
 
     <ConfirmDialog
       open={deleteDialog}
