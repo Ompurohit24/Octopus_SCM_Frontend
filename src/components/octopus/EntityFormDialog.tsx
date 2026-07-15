@@ -710,15 +710,14 @@ export function ConfirmDialog({
             Cancel
           </button>
           <button
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await onConfirm();
-                onOpenChange(false);
-              } finally {
-                setBusy(false);
-              }
-            }}
+  onClick={async () => {
+    setBusy(true);
+    try {
+      await onConfirm();
+    } finally {
+      setBusy(false);
+    }
+  }}
             disabled={busy}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-soft hover:opacity-95 disabled:opacity-60 ${
               destructive ? "bg-destructive" : "bg-primary"
