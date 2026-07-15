@@ -958,7 +958,11 @@ setNewLineName("");
           <div className="mt-5 flex justify-end">
             <button
               type="button"
-              onClick={() => setShowManage(false)}
+              onClick={() => {
+  setDeleteDialog(false);
+  setSelectedLineName("");
+  setShowManage(false);
+}}
               className="rounded-lg border px-4 py-2"
             >
               Close
@@ -969,25 +973,27 @@ setNewLineName("");
       </div>
     )}
 
-    <ConfirmDialog
-  open={deleteDialog}
-  onOpenChange={setDeleteDialog}
-  title="Delete Line Name"
-  description={`Are you sure you want to delete "${selectedLineName}"?`}
-  confirmLabel="Delete"
-  destructive
-  onConfirm={async () => {
- await apiClient.deleteLineName(selectedLineName);
+   {showManage && (
+  <ConfirmDialog
+    open={deleteDialog}
+    onOpenChange={setDeleteDialog}
+    title="Delete Line Name"
+    description={`Are you sure you want to delete "${selectedLineName}"?`}
+    confirmLabel="Delete"
+    destructive
+    onConfirm={async () => {
+      await apiClient.deleteLineName(selectedLineName);
 
-const items = await apiClient.getLineNames();
-const names = items.map((x) => x.name);
+      const items = await apiClient.getLineNames();
+      const names = items.map((x) => x.name);
 
-setLineNames(names);
-setDropdownLineNames(names);
+      setLineNames(names);
+      setDropdownLineNames(names);
 
-
-  }}
-/>
+      setSelectedLineName("");
+    }}
+  />
+)}
   </>
 
   
