@@ -944,6 +944,8 @@ setNewLineName("");
       <button
         type="button"
        onClick={() => {
+        console.log("Delete clicked", name);
+
   setSelectedLineName(name);
   setDeleteDialog(true);
 }}
