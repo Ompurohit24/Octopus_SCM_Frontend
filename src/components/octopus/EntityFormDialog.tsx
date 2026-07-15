@@ -232,7 +232,7 @@ const isWorkflowFieldLocked = (fieldName: string) => {
 
    const [successDialog, setSuccessDialog] = useState(false);
 const [createdCustomer, setCreatedCustomer] = useState<Record<string, unknown>>({});
-
+const [errorTitle, setErrorTitle] = useState("Duplicate Record");
 const [importSuccessDialog, setImportSuccessDialog] = useState(false);
 const [updatedImportSuccessDialog, setUpdatedImportSuccessDialog] = useState(false);
 
@@ -384,7 +384,7 @@ onOpenChange(false);
     locked={!!f.readOnly}
   />
   ) : f.type === "select" ? (
-    <DynamicSelect
+  <DynamicSelect
   field={f}
   className={baseInput}
   locked={!!f.readOnly}
@@ -393,6 +393,7 @@ onOpenChange(false);
   })}
   setErrorDialog={setErrorDialog}
   setErrorMessage={setErrorMessage}
+  setErrorTitle={setErrorTitle}
 />
                 ) : f.type === "textarea" ? (
                   <textarea
@@ -648,8 +649,8 @@ onOpenChange(false);
       />
 
       <h2 className="mt-5 text-2xl font-bold text-red-600">
-        Duplicate Record
-      </h2>
+  {errorTitle}
+</h2>
 
       <p className="mt-5 text-sm">
         {errorMessage}
@@ -740,6 +741,7 @@ function DynamicSelect({
   locked,
   setErrorDialog,
   setErrorMessage,
+  setErrorTitle,
 }: {
   field: FieldDef;
   className: string;
@@ -747,6 +749,7 @@ function DynamicSelect({
   locked: boolean;
   setErrorDialog: (v: boolean) => void;
   setErrorMessage: (v: string) => void;
+  setErrorTitle: (v: string) => void;
 }) {
   const src = field.optionsSource;
   // const queryClient = useQueryClient();
@@ -1001,17 +1004,17 @@ setNewLineName("");
     setSelectedLineName("");
     setDeleteDialog(false);   // Close only on success
 
-  } catch (e) {
-    const message =
-      e instanceof Error
-        ? e.message
-        : "Cannot delete. This Line Name is already used in Import Jobs.";
+  }  catch (e) {
+  setErrorTitle("Cannot Delete");
 
-    setErrorMessage(message);
-    setErrorDialog(true);
+  setErrorMessage(
+    e instanceof Error
+      ? e.message
+      : "Cannot delete. This Line Name is already used in Import Jobs."
+  );
 
-    // Leave delete dialog open
-  }
+  setErrorDialog(true);
+}
 }}
     />
   </>
