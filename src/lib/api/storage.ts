@@ -107,13 +107,12 @@ function toImportWorkflowPayload(workflow: any) {
     goods_registration: workflow.goodsRegi,
 
     other_gov_agency:
-      workflow.otherGovAgency === "" ? null : workflow.otherGovAgency,
+  workflow.otherGovAgency === "Yes" ? "Yes" : "No",
 
     other_gov_agency_type:
-      typeof workflow.otherGovAgencyType === "string" &&
-      workflow.otherGovAgencyType !== ""
-        ? workflow.otherGovAgencyType
-        : null,
+  workflow.otherGovAgency === "Yes"
+    ? workflow.otherGovAgencyType || null
+    : null,
 
     assessment_type:
       workflow.assessmentType === "" ? null : workflow.assessmentType,

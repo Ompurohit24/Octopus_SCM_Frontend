@@ -1207,19 +1207,45 @@ function ServicesChecklist({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {options.map((opt) => {
           const checked = opt in value;
+const status = value[opt] ?? "Pending";
           return (
             <div
-              key={opt}
-              className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5"
-            >
-              <label className="flex flex-1 items-center gap-2 text-xs">
+  key={opt}
+  className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 transition-colors ${
+  status === "Done"
+    ? "border-green-500 bg-green-50"
+    : status === "Pending"
+    ? "border-gray-300 bg-card"
+    : "border-blue-500 bg-blue-50"
+}`}
+>
+              <label
+  className={`flex flex-1 items-center gap-2 text-xs ${
+    status === "Done"
+      ? "text-green-700"
+      : status === "Pending"
+      ? "text-gray-700"
+      : "text-blue-700"
+  }`}
+>
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={(e) => toggle(opt, e.target.checked)}
                   className="size-4 rounded border-border accent-brand"
                 />
-                <span>{opt}</span>
+                <div className="flex items-center gap-2">
+  <span
+    className={`h-2.5 w-2.5 rounded-full ${
+      status === "Done"
+        ? "bg-green-500"
+        : status === "Pending"
+        ? "bg-gray-400"
+        : "bg-blue-500"
+    }`}
+  />
+  <span>{opt}</span>
+</div>
               </label>
               {checked && (
                 <select
