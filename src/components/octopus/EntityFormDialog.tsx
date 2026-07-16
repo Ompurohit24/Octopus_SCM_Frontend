@@ -192,7 +192,30 @@ useEffect(() => {
 
 const currentStageIndex = IMPORT_WORKFLOW.indexOf(currentStage ?? "");
 
+  const getFieldStatus = (fieldName: string) => {
+  if (title !== "Update Job") return "pending";
+
+  const value = watched[fieldName];
+
+  const completed =
+    value === "Done" ||
+    value === "Yes" ||
+    (typeof value === "string" &&
+      value.trim() !== "" &&
+      value !== "Pending" &&
+      value !== "No");
+
+  if (completed) return "completed";
+
+  if (currentStage === fieldName) return "current";
+
+  return "pending";
+};
+
 const isWorkflowFieldLocked = (fieldName: string) => {
+
+
+
   if (title !== "Update Job") return false;
 
   const index = IMPORT_WORKFLOW.indexOf(fieldName);
@@ -334,8 +357,20 @@ onOpenChange(false);
 
           {fields.filter(isVisible).map((f) => {
             const err = errors[f.name]?.message as string | undefined;
-            const baseInput =
-              "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground";
+            const fieldStatus = getFieldStatus(f.name);
+            const completedField = fieldStatus === "completed";
+
+const borderClass =
+  title === "Update Job"
+    ? fieldStatus === "completed"
+      ? "border-green-500 bg-green-50 focus:border-green-500 focus:ring-green-200"
+      : fieldStatus === "current"
+      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100 focus:border-blue-500 focus:ring-blue-200"
+      : "border-gray-300"
+    : "border-border focus:border-ring focus:ring-ring/20";
+
+const baseInput =
+  `h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition-colors focus:ring-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground ${borderClass}`;
             const spanClass =
               f.colSpan === 3
                 ? "sm:col-span-2 lg:col-span-3"
@@ -347,12 +382,43 @@ onOpenChange(false);
               <div
   id={`workflow-${f.name}`}
   key={f.name}
-  className={`space-y-1.5 ${spanClass}`}
+  className={`space-y-1.5 rounded-lg p-1 transition-all ${
+    fieldStatus === "current"
+      ? "bg-blue-50/40"
+      : fieldStatus === "completed"
+      ? "bg-green-50/20"
+      : ""
+  } ${spanClass}`}
 >
-                <label className="text-xs font-medium text-foreground">
-                  {f.label}
-                  {f.required && <span className="ml-0.5 text-destructive">*</span>}
-                </label>
+       <label
+  className={`flex items-center gap-2 text-xs font-medium ${
+    getFieldStatus(f.name) === "completed"
+      ? "text-green-700"
+      : getFieldStatus(f.name) === "current"
+      ? "text-blue-700"
+      : "text-gray-600"
+  }`}
+>
+
+  {title === "Update Job" && (
+    <span
+      className={`h-2.5 w-2.5 rounded-full ${
+        getFieldStatus(f.name) === "completed"
+          ? "bg-green-500"
+          : getFieldStatus(f.name) === "current"
+          ? "bg-blue-500"
+          : "bg-gray-400"
+      }`}
+    />
+  )}
+
+  <span>{f.label}</span>
+
+  {f.required && (
+    <span className="ml-0.5 text-destructive">*</span>
+  )}
+</label>
+                  
                 {f.type === "services" ? (
                   <Controller
                     control={control}
@@ -442,35 +508,42 @@ onOpenChange(false);
 </div>
 
 ) : (
-                  <input
-  type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
-  min={
-    f.name === "eta"
-      ? new Date().toISOString().split("T")[0]
-      : undefined
-  }
-                    placeholder={f.placeholder}
-                    // readOnly={f.readOnly} 
-                    readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
-                    className={baseInput}
-                    {...register(f.name, {
-                      required: f.required ? `${f.label} is required` : false,
-                      min:
-                        f.type === "number" && f.min != null
-                          ? { value: f.min, message: `Minimum ${f.min}` }
-                          : undefined,
-                      max:
-                        f.type === "number" && f.max != null
-                          ? { value: f.max, message: `Maximum ${f.max}` }
-                          : undefined,
-                      pattern: f.email
-                        ? {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: "Invalid email",
-                          }
-                        : f.pattern,
-                    })}
-                  />
+                  <div className="relative">
+  <input
+    type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+    min={
+      f.name === "eta"
+        ? new Date().toISOString().split("T")[0]
+        : undefined
+    }
+    placeholder={f.placeholder}
+    readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
+    className={`${baseInput} ${completedField ? "pr-10" : ""}`}
+    {...register(f.name, {
+      required: f.required ? `${f.label} is required` : false,
+      min:
+        f.type === "number" && f.min != null
+          ? { value: f.min, message: `Minimum ${f.min}` }
+          : undefined,
+      max:
+        f.type === "number" && f.max != null
+          ? { value: f.max, message: `Maximum ${f.max}` }
+          : undefined,
+      pattern: f.email
+        ? {
+            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: "Invalid email",
+          }
+        : f.pattern,
+    })}
+  />
+
+  {title === "Update Job" && completedField && (
+    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">
+      ✓
+    </span>
+  )}
+</div>
                 )}
                 {f.hint && !err && (
                   <p className="text-[11px] text-muted-foreground">{f.hint}</p>
