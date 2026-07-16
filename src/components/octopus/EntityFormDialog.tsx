@@ -294,9 +294,14 @@ try {
   saved = await onSubmit(cleaned as Partial<T>);
   
 } catch (e) {
-  setErrorMessage(
-    e instanceof Error ? e.message : "Operation failed."
-  );
+  const message =
+    e instanceof Error ? e.message : "Operation failed.";
+
+  if (title === "Update Job") {
+    setErrorTitle("Validation Error");
+  }
+
+  setErrorMessage(message);
   setErrorDialog(true);
   return;
 }
