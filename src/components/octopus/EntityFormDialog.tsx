@@ -508,7 +508,7 @@ const baseInput =
 </div>
 
 ) : (
-                  <div className="relative">
+           <div className="relative">
   <input
     type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
     min={
@@ -518,7 +518,7 @@ const baseInput =
     }
     placeholder={f.placeholder}
     readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
-    className={`${baseInput} ${completedField ? "pr-10" : ""}`}
+    className={baseInput}
     {...register(f.name, {
       required: f.required ? `${f.label} is required` : false,
       min:
@@ -537,12 +537,6 @@ const baseInput =
         : f.pattern,
     })}
   />
-
-  {title === "Update Job" && completedField && (
-    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">
-      ✓
-    </span>
-  )}
 </div>
                 )}
                 {f.hint && !err && (
