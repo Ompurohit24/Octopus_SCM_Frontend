@@ -433,17 +433,10 @@ const baseInput =
                         options={f.options ?? []}
                         statusOptions={f.serviceStatusOptions ?? ["Pending", "Done"]}
                         value={
-                          ctl.value && typeof ctl.value === "object" && !Array.isArray(ctl.value)
-                            ? (ctl.value as Record<string, string>)
-                            : typeof ctl.value === "string" && ctl.value
-                            ? Object.fromEntries(
-                                ctl.value.split(/[;,]/).map((s) => {
-                                  const [k, v] = s.split(":").map((x) => x.trim());
-                                  return [k, v || (f.serviceStatusOptions?.[0] ?? "Pending")];
-                                }).filter(([k]) => k),
-                              )
-                            : {}
-                        }
+  ctl.value && typeof ctl.value === "object" && !Array.isArray(ctl.value)
+    ? (ctl.value as Record<string, ServiceItem>)
+    : {}
+}
                         onChange={ctl.onChange}
                       />
                     )}
@@ -1184,6 +1177,12 @@ setEditDialog(true);
   );
 }
 
+type ServiceItem = {
+  status: string;
+  tariff?: number;
+  unit?: string;
+};
+
 function ServicesChecklist({
   options,
   statusOptions,
@@ -1192,87 +1191,140 @@ function ServicesChecklist({
 }: {
   options: string[];
   statusOptions: string[];
-  value: Record<string, string>;
-  onChange: (v: Record<string, string>) => void;
-}) {
+  value: Record<string, ServiceItem>;
+  onChange: (v: Record<string, ServiceItem>) => void;
+})  {
   const toggle = (opt: string, checked: boolean) => {
     const next = { ...value };
+
     if (checked) {
-      if (!(opt in next)) next[opt] = statusOptions[0] ?? "";
+      next[opt] = {
+  status: statusOptions[0] ?? "Pending",
+  tariff: undefined,
+  unit: "",
+};
     } else {
       delete next[opt];
     }
+
     onChange(next);
   };
+
   const setStatus = (opt: string, status: string) => {
-    onChange({ ...value, [opt]: status });
-  };
+  onChange({
+    ...value,
+    [opt]: {
+      ...value[opt],
+      status,
+    },
+  });
+};
+
   return (
     <div className="rounded-lg border border-border bg-background p-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-3">
         {options.map((opt) => {
           const checked = opt in value;
-const status = value[opt] ?? "Pending";
+         const service = value[opt];
+const status = service?.status ?? "Pending";
+
           return (
             <div
-  key={opt}
-  className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 transition-colors ${
-  status === "Done"
-    ? "border-green-500 bg-green-50"
-    : status === "Pending"
-    ? "border-gray-300 bg-card"
-    : "border-blue-500 bg-blue-50"
-}`}
->
-              <label
-  className={`flex flex-1 items-center gap-2 text-xs ${
-    status === "Done"
-      ? "text-green-700"
-      : status === "Pending"
-      ? "text-gray-700"
-      : "text-blue-700"
-  }`}
->
+              key={opt}
+              className={`rounded-lg border p-3 ${
+                status === "Done"
+                  ? "border-green-500 bg-green-50"
+                  : "border-gray-300"
+              }`}
+            >
+              <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={(e) => toggle(opt, e.target.checked)}
-                  className="size-4 rounded border-border accent-brand"
+                  className="size-4"
                 />
-                <div className="flex items-center gap-2">
-  <span
-    className={`h-2.5 w-2.5 rounded-full ${
-      status === "Done"
-        ? "bg-green-500"
-        : status === "Pending"
-        ? "bg-gray-400"
-        : "bg-blue-500"
-    }`}
-  />
-  <span>{opt}</span>
-</div>
-              </label>
+
+                <span className="font-medium">{opt}</span>
+              </div>
+
               {checked && (
-                <select
-                  value={value[opt] ?? ""}
-                  onChange={(e) => setStatus(opt, e.target.value)}
-                  className="h-7 rounded-md border border-border bg-background px-1.5 text-[11px] outline-none focus:border-ring"
-                >
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-3 border-t pt-3 space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">
+                      Job Status
+                    </label>
+
+                    <select
+                      value={status}
+                      onChange={(e) =>
+                        setStatus(opt, e.target.value)
+                      }
+                      className="h-9 w-full rounded-md border px-2"
+                    >
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {status === "Done" && (
+                    <>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">
+                          Tariff
+                        </label>
+
+                       <input
+  type="number"
+  value={service?.tariff ?? ""}
+  onChange={(e) =>
+    onChange({
+      ...value,
+      [opt]: {
+        ...service,
+        tariff: e.target.value === "" ? undefined : Number(e.target.value),
+      },
+    })
+  }
+  placeholder="Enter Tariff"
+  className="h-9 w-full rounded-md border px-2"
+/>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">
+                          Unit
+                        </label>
+
+                        <select
+  value={service?.unit ?? ""}
+  onChange={(e) =>
+    onChange({
+      ...value,
+      [opt]: {
+        ...service,
+        unit: e.target.value,
+      },
+    })
+  }
+  className="h-9 w-full rounded-md border px-2"
+>
+  <option value="">Select</option>
+  <option value="Container">Container</option>
+  <option value="BL">BL</option>
+</select>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           );
         })}
-
-        
-        
       </div>
     </div>
-    
   );
 }

@@ -153,6 +153,14 @@ export interface ImportJob {
   createdAt: string;
 }
 
+export type ServiceItem = {
+  status: string;
+  tariff?: number;
+  unit?: "Container" | "BL" | "";
+};
+
+export type ServiceMap = Record<string, ServiceItem>;
+
 export interface ImportChecklist {
   id: ID;
 
@@ -176,7 +184,7 @@ export interface ImportChecklist {
   goods_registration?: "Pending" | "Done";
 
   other_gov_agency?: "Yes" | "No";
-  other_gov_agency_type?: string;
+  other_gov_agency_type?: ServiceMap;
 
   assessment_type?: string;
   cfs_name?: string;

@@ -110,17 +110,8 @@ function toImportWorkflowPayload(workflow: any) {
   workflow.otherGovAgency === "Yes" ? "Yes" : "No",
 
     other_gov_agency_type:
-  workflow.otherGovAgency !== "Yes"
-    ? null
-    : typeof workflow.otherGovAgencyType === "string"
-    ? workflow.otherGovAgencyType
-    : Array.isArray(workflow.otherGovAgencyType)
-    ? workflow.otherGovAgencyType[0] ?? null
-    : workflow.otherGovAgencyType &&
-      typeof workflow.otherGovAgencyType === "object"
-    ? Object.keys(workflow.otherGovAgencyType).find(
-        (k) => workflow.otherGovAgencyType[k] === "Done"
-      ) ?? null
+  workflow.otherGovAgency === "Yes"
+    ? workflow.otherGovAgencyType ?? {}
     : null,
 
     assessment_type:
