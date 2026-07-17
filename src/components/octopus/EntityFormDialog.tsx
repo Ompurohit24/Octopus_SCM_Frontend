@@ -1198,10 +1198,10 @@ function ServicesChecklist({
     const next = { ...value };
 
     if (checked) {
-      next[opt] = {
+  next[opt] = {
   status: statusOptions[0] ?? "Pending",
   tariff: undefined,
-  unit: "",
+  unit: undefined,
 };
     } else {
       delete next[opt];
@@ -1306,7 +1306,7 @@ const status = service?.status ?? "Pending";
       ...value,
       [opt]: {
         ...service,
-        unit: e.target.value,
+        unit: e.target.value || undefined,
       },
     })
   }
