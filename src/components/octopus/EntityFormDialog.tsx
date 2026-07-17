@@ -290,10 +290,56 @@ const submit = handleSubmit(async (raw) => {
 
 let saved;
 
+const validateServices = (
+  services?: Record<string, ServiceItem>
+): string | null => {
+  if (!services) return null;
+
+  for (const [name, service] of Object.entries(services)) {
+    if (service.status !== "Done") continue;
+
+    const tariffMissing =
+      service.tariff === undefined ||
+      service.tariff === null;
+
+    const unitMissing =
+      !service.unit;
+
+    if (tariffMissing && unitMissing)
+      return `${name}: Tariff and Unit are required.`;
+
+    if (tariffMissing)
+      return `${name}: Tariff is required.`;
+
+    if (unitMissing)
+      return `${name}: Unit is required.`;
+  }
+
+  return null;
+};
+
+const serviceError =
+  validateServices(
+    cleaned.otherGovAgencyType as Record<string, ServiceItem>
+  ) ??
+  validateServices(
+    cleaned.otherServices as Record<string, ServiceItem>
+  );
+
+if (serviceError) {
+  setErrorTitle("Validation Error");
+  setErrorMessage(serviceError);
+  setErrorDialog(true);
+  return;
+}
+
+
 try {
   console.log(
   JSON.stringify(cleaned.otherGovAgencyType, null, 2)
 );
+
+
   saved = await onSubmit(cleaned as Partial<T>);
  
   
@@ -845,7 +891,12 @@ const [editLineName, setEditLineName] = useState("");
 
 
 useEffect(() => {
-  apiClient.getLineNames().then((items) => {
+  const loader =
+  field.name === "lineName"
+    ? apiClient.getLineNames()
+    : apiClient.getTypeOfServices();
+
+loader.then((items) => {
     const names = items.map((x) => x.name);
 
     setDropdownLineNames(names);
@@ -875,9 +926,10 @@ useEffect(() => {
       ).sort((a, b) => a.label.localeCompare(b.label));
     }
     const base =
-  field.name === "lineName"
-    ? dropdownLineNames
-    : [...(field.options ?? []), ...customOpts];
+ field.name === "lineName" ||
+field.name === "type_of_service"
+  ? dropdownLineNames
+  : [...(field.options ?? []), ...customOpts];
 
 return Array.from(new Set(base)).map((o) => ({
   value: o,
@@ -961,14 +1013,17 @@ const selectedValue =
         )
       )}
 
-  {field.name === "lineName" && (
+  {(field.name === "lineName" ||
+  field.name === "type_of_service") && (
   <>
     <button
       type="button"
       onClick={() => setShowManage(true)}
       className="text-[11px] font-medium text-brand hover:underline"
     >
-      ⚙ Manage Line Names
+      {field.name === "lineName"
+  ? "⚙ Manage Line Names"
+  : "⚙ Manage Type of Services"}
     </button>
 
     {showManage && (
@@ -976,7 +1031,9 @@ const selectedValue =
         <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
 
           <h3 className="text-lg font-semibold">
-            Manage Line Names
+            {field.name === "lineName"
+  ? "Manage Line Names"
+  : "Manage Type of Services"}
           </h3>
 
       <div className="mt-4 space-y-3">
@@ -985,7 +1042,11 @@ const selectedValue =
     <input
       value={newLineName}
       onChange={(e) => setNewLineName(e.target.value)}
-      placeholder="New Line Name"
+     placeholder={
+  field.name === "lineName"
+    ? "New Line Name"
+    : "New Type of Service"
+}
       className="flex-1 rounded-md border px-3 py-2 text-sm"
     />
 
@@ -996,9 +1057,16 @@ const selectedValue =
 
         if (!value) return;
 
-      await apiClient.createLineName(value);
+      if (field.name === "lineName") {
+  await apiClient.createLineName(value);
+} else {
+  await apiClient.createTypeOfService(value);
+}
 
-const items = await apiClient.getLineNames();
+const items =
+  field.name === "lineName"
+    ? await apiClient.getLineNames()
+    : await apiClient.getTypeOfServices();
 const names = items.map((x) => x.name);
 
 setLineNames(names);
@@ -1069,7 +1137,9 @@ setEditDialog(true);
     <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
 
       <h3 className="text-lg font-semibold">
-        Edit Line Name
+        {field.name === "lineName"
+  ? "Edit Line Name"
+  : "Edit Type of Service"}
       </h3>
 
       <input
@@ -1096,12 +1166,22 @@ setEditDialog(true);
           type="button"
           onClick={async () => {
             try {
-              await apiClient.updateLineName(
-                editingLineName,
-                editLineName.trim(),
-              );
+             if (field.name === "lineName") {
+  await apiClient.updateLineName(
+    editingLineName,
+    editLineName.trim(),
+  );
+} else {
+  await apiClient.updateTypeOfService(
+    editingLineName,
+    editLineName.trim(),
+  );
+}
 
-              const items = await apiClient.getLineNames();
+const items =
+  field.name === "lineName"
+    ? await apiClient.getLineNames()
+    : await apiClient.getTypeOfServices();
               const names = items.map((x) => x.name);
 
               setLineNames(names);
@@ -1147,9 +1227,16 @@ setEditDialog(true);
       destructive
       onConfirm={async () => {
   try {
-    await apiClient.deleteLineName(selectedLineName);
+    if (field.name === "lineName") {
+  await apiClient.deleteLineName(selectedLineName);
+} else {
+  await apiClient.deleteTypeOfService(selectedLineName);
+}
 
-    const items = await apiClient.getLineNames();
+const items =
+  field.name === "lineName"
+    ? await apiClient.getLineNames()
+    : await apiClient.getTypeOfServices();
     const names = items.map((x) => x.name);
 
     setLineNames(names);

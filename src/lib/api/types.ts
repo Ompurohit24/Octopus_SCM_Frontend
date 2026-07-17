@@ -19,7 +19,8 @@ export type EntityKey =
   | "rules"
   | "documents"
   | "reportRuns"
-  | "notifications";
+  | "notifications"
+  | "type_of_service";
 
 // export interface Customer {
 //   id: ID;
@@ -65,14 +66,29 @@ export interface Customer {
 
 export interface Vendor {
   id: ID;
-  code: string;
-  name: string;
-  category: "Shipping Line" | "CHA" | "Trucker" | "Warehouse" | "Other";
-  country: string;
-  status: "Active" | "Inactive";
-  email?: string;
-  phone?: string;
-  createdAt: string;
+
+  vendor_code: string;
+  vendor_name: string;
+
+  address: string;
+
+  email: string;
+  countryCode: string;
+  phone: string;
+
+  gstin: string;
+  pan: string;
+
+  type_of_service: string;
+
+  is_active: boolean;
+  is_deleted: boolean;
+
+  created_by?: string;
+  updated_by?: string;
+
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ShippingLine {
@@ -353,4 +369,8 @@ export type EntityMap = {
   documents: DocumentItem;
   reportRuns: ReportRun;
   notifications: NotificationItem;
+  type_of_service: {
+  id?: string;
+  name: string;
+};
 };

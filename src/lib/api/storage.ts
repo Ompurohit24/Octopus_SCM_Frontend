@@ -64,8 +64,10 @@ message =
 
 const ROUTES: Partial<Record<EntityKey, string>> = {
   customers: "/customers",
+  vendors: "/vendors",
   importJobs: "/import-jobs",
   importChecklists: "/import-workflows",
+  type_of_service: "/masters/type-of-services",
 };
 export interface ListQuery {
   search?: string;
@@ -113,6 +115,9 @@ function toImportWorkflowPayload(workflow: any) {
   workflow.otherGovAgency === "Yes"
     ? workflow.otherGovAgencyType ?? {}
     : null,
+
+    other_services:
+  workflow.otherServices ?? {},
 
     assessment_type:
       workflow.assessmentType === "" ? null : workflow.assessmentType,
@@ -213,6 +218,8 @@ igmDate: item.igm_date?.split("T")[0] ?? "",
 
     otherGovAgency: item.other_gov_agency,
     otherGovAgencyType: item.other_gov_agency_type,
+
+    otherServices: item.other_services,
 
     assessmentType: item.assessment_type,
     cfsName: item.cfs_name,
@@ -340,19 +347,25 @@ async list<K extends EntityKey>(
 
   // ---------------- Default ----------------
 
-  return {
-    rows: response.items.map((item: any) => ({
-  ...item,
-  id: item.id ?? item._id,
+ return {
+  rows: response.items.map((item: any) => ({
+    ...item,
+    id: item.id ?? item._id,
 
-  customerCode: item.customer_code,
-  customer_code: item.customer_code,
+    customerCode: item.customer_code,
+    customer_code: item.customer_code,
 
-  customerName: item.customer_name,
-  customer_name: item.customer_name,
+    customerName: item.customer_name,
+    customer_name: item.customer_name,
 
-  countryCode: item.country_code,
-})) as EntityMap[K][],
+    vendorCode: item.vendor_code,
+    vendor_code: item.vendor_code,
+
+    vendorName: item.vendor_name,
+    vendor_name: item.vendor_name,
+
+    countryCode: item.country_code,
+  })) as EntityMap[K][],
     total: response.total,
     page,
     pageSize,
@@ -457,6 +470,22 @@ if (key === "importChecklists") {
   if (input.pan_document) {
     formData.append("pan_document", input.pan_document);
   }
+
+  payload = formData;
+}
+
+if (key === "vendors") {
+  const formData = new FormData();
+
+  formData.append("vendor_code", input.vendor_code ?? "");
+  formData.append("vendor_name", input.vendor_name ?? "");
+  formData.append("address", input.address ?? "");
+  formData.append("email", input.email ?? "");
+  formData.append("countryCode", input.countryCode ?? "+91");
+  formData.append("phone", input.phone ?? "");
+  formData.append("gstin", input.gstin ?? "");
+  formData.append("pan", input.pan ?? "");
+  formData.append("type_of_service", input.type_of_service ?? "");
 
   payload = formData;
 }
@@ -567,6 +596,22 @@ return fromImportWorkflow(item) as unknown as EntityMap[K];
   } as any;
 }
 
+if (key === "vendors") {
+  const vendor = patch as any;
+
+  patch = {
+    vendor_code: vendor.vendor_code,
+    vendor_name: vendor.vendor_name,
+    address: vendor.address,
+    email: vendor.email,
+    country_code: vendor.countryCode,
+    phone: vendor.phone,
+    gstin: vendor.gstin,
+    pan: vendor.pan,
+    type_of_service: vendor.type_of_service,
+  } as any;
+}
+
   if (!route) {
     throw new Error(`${key} backend not implemented`);
   }
@@ -656,7 +701,9 @@ async bulkCreate<K extends EntityKey>(
 async getNextCustomerCode(): Promise<{ customer_code: string }> {
   return request<{ customer_code: string }>("/customers/next-code");
 },
-
+async getNextVendorCode(): Promise<{ vendor_code: string }> {
+  return request<{ vendor_code: string }>("/vendors/next-code");
+},
 async getNextImportJobNumber(): Promise<string> {
   const response = await request<{
     job_number: string;
@@ -696,7 +743,44 @@ async deleteLineName(name: string) {
   );
 },
 
+async getTypeOfServices(): Promise<{ name: string }[]> {
+  return request<{ name: string }[]>("/masters/type-of-services");
+},
+
+async createTypeOfService(name: string) {
+  return request(
+    "/masters/type-of-services?name=" + encodeURIComponent(name),
+    {
+      method: "POST",
+    },
+  );
+},
+
+async updateTypeOfService(
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  await request(
+    `/masters/type-of-services/${encodeURIComponent(oldName)}?new_name=${encodeURIComponent(newName)}`,
+    {
+      method: "PUT",
+    },
+  );
+},
+
+async deleteTypeOfService(name: string) {
+  return request(
+    "/masters/type-of-services/" + encodeURIComponent(name),
+    {
+      method: "DELETE",
+    },
+  );
+},
+
 };
+
+
+
 
 export type ApiClient = typeof apiClient; 
 
