@@ -291,7 +291,11 @@ const submit = handleSubmit(async (raw) => {
 let saved;
 
 try {
+  console.log(
+  JSON.stringify(cleaned.otherGovAgencyType, null, 2)
+);
   saved = await onSubmit(cleaned as Partial<T>);
+ 
   
 } catch (e) {
   const message =
@@ -1193,46 +1197,53 @@ function ServicesChecklist({
   statusOptions: string[];
   value: Record<string, ServiceItem>;
   onChange: (v: Record<string, ServiceItem>) => void;
-})  {
-  const toggle = (opt: string, checked: boolean) => {
-    const next = { ...value };
-
-    if (checked) {
-  next[opt] = {
-  status: statusOptions[0] ?? "Pending",
-  tariff: undefined,
-  unit: undefined,
-};
-    } else {
-      delete next[opt];
-    }
-
-    onChange(next);
+}) {
+  const updateService = (
+    opt: string,
+    patch: Partial<ServiceItem>,
+  ) => {
+    onChange({
+      ...value,
+      [opt]: {
+        ...(value[opt] ?? {
+          status: statusOptions[0] ?? "Pending",
+        }),
+        ...patch,
+      },
+    });
   };
 
-  const setStatus = (opt: string, status: string) => {
-  onChange({
-    ...value,
-    [opt]: {
-      ...value[opt],
-      status,
-    },
-  });
-};
+  const toggle = (opt: string, checked: boolean) => {
+    if (!checked) {
+      const next = { ...value };
+      delete next[opt];
+      onChange(next);
+      return;
+    }
+
+    onChange({
+      ...value,
+      [opt]: {
+        status: statusOptions[0] ?? "Pending",
+        tariff: undefined,
+        unit: undefined,
+      },
+    });
+  };
 
   return (
     <div className="rounded-lg border border-border bg-background p-3">
       <div className="space-y-3">
         {options.map((opt) => {
-          const checked = opt in value;
-         const service = value[opt];
-const status = service?.status ?? "Pending";
+          const service = value[opt];
+          const checked = !!service;
+          const status = service?.status ?? "Pending";
 
           return (
             <div
               key={opt}
               className={`rounded-lg border p-3 ${
-                status === "Done"
+                checked && status === "Done"
                   ? "border-green-500 bg-green-50"
                   : "border-gray-300"
               }`}
@@ -1241,7 +1252,9 @@ const status = service?.status ?? "Pending";
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={(e) => toggle(opt, e.target.checked)}
+                  onChange={(e) =>
+                    toggle(opt, e.target.checked)
+                  }
                   className="size-4"
                 />
 
@@ -1249,7 +1262,7 @@ const status = service?.status ?? "Pending";
               </div>
 
               {checked && (
-                <div className="mt-3 border-t pt-3 space-y-3">
+                <div className="mt-3 space-y-3 border-t pt-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium">
                       Job Status
@@ -1258,7 +1271,9 @@ const status = service?.status ?? "Pending";
                     <select
                       value={status}
                       onChange={(e) =>
-                        setStatus(opt, e.target.value)
+                        updateService(opt, {
+                          status: e.target.value,
+                        })
                       }
                       className="h-9 w-full rounded-md border px-2"
                     >
@@ -1277,21 +1292,20 @@ const status = service?.status ?? "Pending";
                           Tariff
                         </label>
 
-                       <input
-  type="number"
-  value={service?.tariff ?? ""}
-  onChange={(e) =>
-    onChange({
-      ...value,
-      [opt]: {
-        ...service,
-        tariff: e.target.value === "" ? undefined : Number(e.target.value),
-      },
-    })
-  }
-  placeholder="Enter Tariff"
-  className="h-9 w-full rounded-md border px-2"
-/>
+                        <input
+                          type="number"
+                          value={service?.tariff ?? ""}
+                          onChange={(e) =>
+                            updateService(opt, {
+                              tariff:
+                                e.target.value === ""
+                                  ? undefined
+                                  : Number(e.target.value),
+                            })
+                          }
+                          placeholder="Enter Tariff"
+                          className="h-9 w-full rounded-md border px-2"
+                        />
                       </div>
 
                       <div>
@@ -1300,22 +1314,21 @@ const status = service?.status ?? "Pending";
                         </label>
 
                         <select
-  value={service?.unit ?? ""}
-  onChange={(e) =>
-    onChange({
-      ...value,
-      [opt]: {
-        ...service,
-        unit: e.target.value || undefined,
-      },
-    })
-  }
-  className="h-9 w-full rounded-md border px-2"
->
-  <option value="">Select</option>
-  <option value="Container">Container</option>
-  <option value="BL">BL</option>
-</select>
+                          value={service?.unit ?? ""}
+                          onChange={(e) =>
+                            updateService(opt, {
+                              unit:
+                                e.target.value || undefined,
+                            })
+                          }
+                          className="h-9 w-full rounded-md border px-2"
+                        >
+                          <option value="">Select</option>
+                          <option value="Container">
+                            Container
+                          </option>
+                          <option value="BL">BL</option>
+                        </select>
                       </div>
                     </>
                   )}
