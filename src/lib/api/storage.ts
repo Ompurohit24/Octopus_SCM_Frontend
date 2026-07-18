@@ -362,10 +362,13 @@ async list<K extends EntityKey>(
   }
 
   // ---------------- Default ----------------
-console.log("Entity:", key);
-console.log("Response:", response);
- return {
-  rows: response.items.map((item: any) => ({
+const items = (
+  Array.isArray(response)
+    ? response
+    : response.items ?? []
+) as any[];
+return {
+  rows: items.map((item: any) => ({
     ...item,
     id: item.id ?? item._id,
 
@@ -381,12 +384,16 @@ console.log("Response:", response);
     vendorName: item.vendor_name,
     vendor_name: item.vendor_name,
 
-    countryCode: item.country_code,
+    countryCode: item.countryCode ?? item.country_code,
   })) as EntityMap[K][],
-    total: response.total,
-    page,
-    pageSize,
-  };
+
+  total: Array.isArray(response)
+    ? items.length
+    : response.total ?? items.length,
+
+  page,
+  pageSize,
+};
 },
 
 async all<K extends EntityKey>(key: K): Promise<EntityMap[K][]> {
@@ -718,9 +725,11 @@ async bulkCreate<K extends EntityKey>(
 async getNextCustomerCode(): Promise<{ customer_code: string }> {
   return request<{ customer_code: string }>("/customers/next-code");
 },
+
 async getNextVendorCode(): Promise<{ vendor_code: string }> {
   return request<{ vendor_code: string }>("/vendors/next-code");
 },
+ 
 async getNextImportJobNumber(): Promise<string> {
   const response = await request<{
     job_number: string;

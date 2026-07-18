@@ -256,6 +256,8 @@ const isWorkflowFieldLocked = (fieldName: string) => {
 
    const [successDialog, setSuccessDialog] = useState(false);
 const [createdCustomer, setCreatedCustomer] = useState<Record<string, unknown>>({});
+const [vendorSuccessDialog, setVendorSuccessDialog] = useState(false);
+const [createdVendor, setCreatedVendor] = useState<Record<string, unknown>>({});
 const [errorTitle, setErrorTitle] = useState("Duplicate Record");
 const [importSuccessDialog, setImportSuccessDialog] = useState(false);
 const [updatedImportSuccessDialog, setUpdatedImportSuccessDialog] = useState(false);
@@ -298,21 +300,47 @@ const validateServices = (
   for (const [name, service] of Object.entries(services)) {
     if (service.status !== "Done") continue;
 
-    const tariffMissing =
-      service.tariff === undefined ||
-      service.tariff === null;
+    // Tariff Unit required
+    if (!service.unit) {
+      return `${name}: Tariff Unit is required.`;
+    }
 
-    const unitMissing =
-      !service.unit;
+    // BL -> single Tariff Amount required
+    if (service.unit === "BL") {
+      if (
+        service.tariff === undefined ||
+        service.tariff === null
+      ) {
+        return `${name}: Tariff Amount is required.`;
+      }
 
-    if (tariffMissing && unitMissing)
-      return `${name}: Tariff and Unit are required.`;
+      continue;
+    }
 
-    if (tariffMissing)
-      return `${name}: Tariff is required.`;
+    // Container -> user must select 20 and/or 40
+    if (service.unit === "Container") {
+      if (!service.enable20 && !service.enable40) {
+        return `${name}: Select Container Size 20 or 40.`;
+      }
 
-    if (unitMissing)
-      return `${name}: Unit is required.`;
+      // Only require 20 tariff if 20 is checked
+      if (
+        service.enable20 &&
+        (service.tariff20 === undefined ||
+          service.tariff20 === null)
+      ) {
+        return `${name}: 20 Tariff Amount is required.`;
+      }
+
+      // Only require 40 tariff if 40 is checked
+      if (
+        service.enable40 &&
+        (service.tariff40 === undefined ||
+          service.tariff40 === null)
+      ) {
+        return `${name}: 40 Tariff Amount is required.`;
+      }
+    }
   }
 
   return null;
@@ -360,6 +388,12 @@ if (title === "New Customer") {
     setCreatedCustomer(saved as Record<string, unknown>);
     setSuccessDialog(true);
     return;
+}
+
+if (title === "New Vendor") {
+  setCreatedVendor(saved as Record<string, unknown>);
+  setVendorSuccessDialog(true);
+  return;
 }
 
 if (title === "New Import Job") {
@@ -612,6 +646,51 @@ const baseInput =
             {isSubmitting ? "Saving…" : submitLabel}
           </button>
         </div>
+
+          {vendorSuccessDialog && (
+  <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+
+      <Logo
+        size={80}
+        className="mx-auto justify-center"
+        showWordmark={false}
+      />
+
+      <h2 className="mt-5 text-2xl font-bold text-green-600">
+        Vendor Created Successfully
+      </h2>
+
+      <div className="mt-6 space-y-2 text-sm">
+
+        <div>
+          <strong>Vendor Code</strong>
+          <br />
+          {(createdVendor.vendor_code as string) ?? ""}
+        </div>
+
+        <div>
+          <strong>Vendor Name</strong>
+          <br />
+          {(createdVendor.vendor_name as string) ?? ""}
+        </div>
+
+      </div>
+
+      <button
+        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+        onClick={() => {
+          setVendorSuccessDialog(false);
+          onOpenChange(false);
+        }}
+      >
+        OK
+      </button>
+
+    </div>
+  </div>
+)}
+
             {successDialog && (
   <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 backdrop-blur-sm">
     <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
@@ -871,9 +950,13 @@ function DynamicSelect({
   // const queryClient = useQueryClient();
 console.log("FIELD", field.name, field);
 console.log("optionsSource", field.optionsSource);
-const query = useEntityAll(
-  (src?.entity ?? "customers") as EntityKey
-);
+const entityKey = (
+  field.name === "transporter"
+    ? "vendors"
+    : src?.entity ?? "customers"
+) as EntityKey;
+
+const query = useEntityAll(entityKey);
 console.log("Field:", field.name);
 console.log("Entity:", src?.entity);
 console.log("Loading:", query.isLoading);
@@ -1287,8 +1370,15 @@ const items =
 
 type ServiceItem = {
   status: string;
-  tariff?: number;
   unit?: string;
+
+  tariff?: number;
+
+  tariff20?: number;
+  tariff40?: number;
+
+  enable20?: boolean;
+  enable40?: boolean;
 };
 
 function ServicesChecklist({
@@ -1325,14 +1415,18 @@ function ServicesChecklist({
       return;
     }
 
-    onChange({
-      ...value,
-      [opt]: {
-        status: statusOptions[0] ?? "Pending",
-        tariff: undefined,
-        unit: undefined,
-      },
-    });
+ onChange({
+  ...value,
+  [opt]: {
+    status: statusOptions[0] ?? "Pending",
+    unit: undefined,
+    tariff: undefined,
+    tariff20: undefined,
+    tariff40: undefined,
+    enable20: false,
+    enable40: false,
+  },
+});
   };
 
   return (
@@ -1389,53 +1483,158 @@ function ServicesChecklist({
                     </select>
                   </div>
 
-                  {status === "Done" && (
-                    <>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">
-                          Tariff
-                        </label>
+             {status === "Done" && (
+  <>
+    {/* Tariff Unit FIRST */}
+    <div>
+      <label className="mb-1 block text-xs font-medium">
+        Tariff Unit
+      </label>
 
-                        <input
-                          type="number"
-                          value={service?.tariff ?? ""}
-                          onChange={(e) =>
-                            updateService(opt, {
-                              tariff:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                          placeholder="Enter Tariff"
-                          className="h-9 w-full rounded-md border px-2"
-                        />
-                      </div>
+      <select
+        value={service?.unit ?? ""}
+        onChange={(e) => {
+          const unit = e.target.value || undefined;
 
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">
-                          Unit
-                        </label>
+         updateService(opt, {
+  unit,
+  tariff: undefined,
+  tariff20: undefined,
+  tariff40: undefined,
+  enable20: false,
+  enable40: false,
+});
+        }}
+        className="h-9 w-full rounded-md border px-2"
+      >
+        <option value="">Select</option>
+        <option value="Container">Container</option>
+        <option value="BL">BL</option>
+      </select>
+    </div>
 
-                        <select
-                          value={service?.unit ?? ""}
-                          onChange={(e) =>
-                            updateService(opt, {
-                              unit:
-                                e.target.value || undefined,
-                            })
-                          }
-                          className="h-9 w-full rounded-md border px-2"
-                        >
-                          <option value="">Select</option>
-                          <option value="Container">
-                            Container
-                          </option>
-                          <option value="BL">BL</option>
-                        </select>
-                      </div>
-                    </>
-                  )}
+    {/* Container selected -> separate 20 & 40 inputs */}
+
+
+   {service?.unit === "Container" && (
+  <div className="space-y-3">
+    <label className="mb-1 block text-xs font-medium">
+      Tariff Amount
+    </label>
+
+    <div className="flex gap-6">
+      {/* 20 FT */}
+      <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
+        <input
+          type="checkbox"
+          checked={!!service?.enable20}
+          onChange={(e) =>
+            updateService(opt, {
+              enable20: e.target.checked,
+              tariff20: e.target.checked
+                ? service?.tariff20
+                : undefined,
+            })
+          }
+          className="h-5 w-5"
+        />
+        20
+      </label>
+
+      {/* 40 FT */}
+      <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
+        <input
+          type="checkbox"
+          checked={!!service?.enable40}
+          onChange={(e) =>
+            updateService(opt, {
+              enable40: e.target.checked,
+              tariff40: e.target.checked
+                ? service?.tariff40
+                : undefined,
+            })
+          }
+          className="h-5 w-5"
+        />
+        40
+      </label>
+    </div>
+
+    {/* 20 Tariff */}
+    {service?.enable20 && (
+      <div>
+        <label className="mb-1 block text-sm font-semibold">
+          20 Tariff
+        </label>
+
+        <input
+          type="number"
+          value={service?.tariff20 ?? ""}
+          onChange={(e) =>
+            updateService(opt, {
+              tariff20:
+                e.target.value === ""
+                  ? undefined
+                  : Number(e.target.value),
+            })
+          }
+          placeholder="Enter 20 Tariff"
+          className="h-9 w-full rounded-md border px-2"
+        />
+      </div>
+    )}
+
+    {/* 40 Tariff */}
+    {service?.enable40 && (
+      <div>
+        <label className="mb-1 block text-sm font-semibold">
+          40 Tariff
+        </label>
+
+        <input
+          type="number"
+          value={service?.tariff40 ?? ""}
+          onChange={(e) =>
+            updateService(opt, {
+              tariff40:
+                e.target.value === ""
+                  ? undefined
+                  : Number(e.target.value),
+            })
+          }
+          placeholder="Enter 40 Tariff"
+          className="h-9 w-full rounded-md border px-2"
+        />
+      </div>
+    )}
+  </div>
+)}
+
+{/* BL selected -> single tariff input */}
+{service?.unit === "BL" && (
+  <div>
+    <label className="mb-1 block text-xs font-medium">
+      Tariff Amount
+    </label>
+
+    <input
+      type="number"
+      value={service?.tariff ?? ""}
+      onChange={(e) =>
+        updateService(opt, {
+          tariff:
+            e.target.value === ""
+              ? undefined
+              : Number(e.target.value),
+        })
+      }
+      placeholder="Enter Tariff Amount"
+      className="h-9 w-full rounded-md border px-2"
+    />
+  </div>
+)}
+                  </>
+                )}
                 </div>
               )}
             </div>
@@ -1445,3 +1644,7 @@ function ServicesChecklist({
     </div>
   );
 }
+           
+       
+    
+  

@@ -24,6 +24,7 @@ import {
   useBulkDelete,
   useBulkCreate,
   useNextCustomerCode,
+  useNextVendorCode,
   useNextImportJobNumber,
 } from "@/lib/api/hooks";
 import type { EntityKey, EntityMap, ID } from "@/lib/api/types";
@@ -396,6 +397,7 @@ function CrudModulePage<K extends EntityKey>({
     filter,
   });
   const nextCustomerCode = useNextCustomerCode();
+  const nextVendorCode = useNextVendorCode();
   const nextImportJobNumber = useNextImportJobNumber();
   // const nextCustomerCode =
   // config.key === "customers"
@@ -470,10 +472,14 @@ function buildCreateDefaults(): Partial<EntityMap[K]> {
   if (config.codePrefix) {
     if (config.key === "customers") {
       init["customer_code"] =
-        nextCustomerCode?.data?.customer_code ?? "";
+        nextCustomerCode.data?.customer_code ?? "";
+    } else if (config.key === "vendors") {
+      init["vendor_code"] =
+        nextVendorCode.data?.vendor_code ?? "";
     } else if (config.key === "importJobs") {
-    init.jobNo = nextImportJobNumber.data ?? "";
-} else {
+      init["jobNo"] =
+        nextImportJobNumber.data ?? "";
+    } else {
       const existing = (listQuery.data?.rows ?? []).map(
         (r) =>
           (r as unknown as Record<string, string>)[

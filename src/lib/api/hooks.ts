@@ -26,6 +26,14 @@ export function useNextCustomerCode() {
   });
 }
 
+export function useNextVendorCode() {
+  return useQuery({
+    queryKey: ["vendors", "next-code"],
+    queryFn: () => apiClient.getNextVendorCode(),
+    staleTime: 0,
+  });
+}
+
 export function useNextImportJobNumber() {
   return useQuery({
     queryKey: ["import-jobs", "next-number"],
