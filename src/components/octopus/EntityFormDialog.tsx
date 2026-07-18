@@ -7,7 +7,12 @@ import { useRef } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { ChevronsUpDown, Check } from "lucide-react";
+import {
+  ChevronsUpDown,
+  Check,
+  Download,
+  ChevronDown,
+} from "lucide-react";
 // import { useEntityAll } from "@/lib/api/hooks";
 import { Pencil } from "lucide-react";
 import type { EntityKey } from "@/lib/api/types";
@@ -261,6 +266,7 @@ const [createdVendor, setCreatedVendor] = useState<Record<string, unknown>>({});
 const [errorTitle, setErrorTitle] = useState("Duplicate Record");
 const [importSuccessDialog, setImportSuccessDialog] = useState(false);
 const [updatedImportSuccessDialog, setUpdatedImportSuccessDialog] = useState(false);
+const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
 const [createdImportJob, setCreatedImportJob] = useState<Record<string, unknown>>({});
   if (!open) return null;
@@ -426,16 +432,82 @@ onOpenChange(false);
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-          <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+  <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+
+  <div className="flex items-center gap-2">
+
+    {title === "Update Job" && (
+      <Popover
+        open={exportMenuOpen}
+        onOpenChange={setExportMenuOpen}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 gap-2"
+          >
+            <Download className="h-4 w-4" />
+
+            Export Excel
+
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent
+          align="end"
+          className="w-56 p-1"
+        >
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
-            className="rounded p-1 text-muted-foreground hover:bg-accent"
-            aria-label="Close"
+            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
           >
-            ✕
+            All Jobs
           </button>
-        </div>
+
+          <button
+            type="button"
+            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+          >
+            OC Jobs
+          </button>
+
+          <button
+            type="button"
+            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+          >
+            DO Jobs
+          </button>
+
+          <button
+            type="button"
+            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+          >
+            Pending Jobs
+          </button>
+
+          <button
+            type="button"
+            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+          >
+            Closed Jobs
+          </button>
+        </PopoverContent>
+      </Popover>
+    )}
+
+    <button
+      type="button"
+      onClick={() => onOpenChange(false)}
+      className="rounded p-1 text-muted-foreground hover:bg-accent"
+      aria-label="Close"
+    >
+      ✕
+    </button>
+
+  </div>
+</div>
         {banner && (
           <div className="flex items-center justify-center border-b border-border bg-muted/40 px-5 py-2.5 text-center">
             {banner}
@@ -1518,11 +1590,11 @@ function ServicesChecklist({
 
    {service?.unit === "Container" && (
   <div className="space-y-3">
-    <label className="mb-1 block text-xs font-medium">
-      Tariff Amount
-    </label>
+<label className="mb-1 block text-xs font-medium">
+  Container Size
+</label>
 
-    <div className="flex gap-6">
+<div className="flex gap-6">
       {/* 20 FT */}
       <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
         <input
@@ -1538,7 +1610,7 @@ function ServicesChecklist({
           }
           className="h-5 w-5"
         />
-        20
+        20 FT
       </label>
 
       {/* 40 FT */}
@@ -1556,7 +1628,7 @@ function ServicesChecklist({
           }
           className="h-5 w-5"
         />
-        40
+        40 FT
       </label>
     </div>
 
@@ -1564,7 +1636,7 @@ function ServicesChecklist({
     {service?.enable20 && (
       <div>
         <label className="mb-1 block text-sm font-semibold">
-          20 Tariff
+          20 FT Tariff Amount
         </label>
 
         <input
@@ -1588,7 +1660,7 @@ function ServicesChecklist({
     {service?.enable40 && (
       <div>
         <label className="mb-1 block text-sm font-semibold">
-          40 Tariff
+          40 FT Tariff Amount
         </label>
 
         <input
