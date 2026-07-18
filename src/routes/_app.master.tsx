@@ -61,14 +61,17 @@ function MasterRoute() {
       </div>
 
       <div className="-mx-6 lg:-mx-8">
-        <ModulePage
-          module="Master"
-          config={
-            active === "Customers"
-              ? customersConfig
-              : vendorsConfig
-          }
-        />
+     {active === "Customers" ? (
+  <ModulePage
+    module="Master"
+    config={customersConfig}
+  />
+) : (
+  <ModulePage
+    module="Master"
+    config={vendorsConfig}
+  />
+)}
       </div>
     </div>
   );

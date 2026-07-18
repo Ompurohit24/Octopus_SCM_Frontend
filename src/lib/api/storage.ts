@@ -293,6 +293,22 @@ async list<K extends EntityKey>(
     `${route}?search=${encodeURIComponent(query.search ?? "")}&skip=${skip}&limit=${limit}`,
   );
 
+ if (key === "type_of_service") {
+  const items = (Array.isArray(response)
+    ? response
+    : response.items ?? []) as any[];
+
+  return {
+   rows: items.map((item) => ({
+  id: item.id ?? item._id ?? item.name,
+  name: item.name,
+})) as EntityMap[K][],
+    total: items.length,
+    page,
+    pageSize,
+  };
+}
+
   // ---------------- Import Jobs ----------------
 
   if (key === "importJobs") {
@@ -346,7 +362,8 @@ async list<K extends EntityKey>(
   }
 
   // ---------------- Default ----------------
-
+console.log("Entity:", key);
+console.log("Response:", response);
  return {
   rows: response.items.map((item: any) => ({
     ...item,
@@ -377,6 +394,8 @@ async all<K extends EntityKey>(key: K): Promise<EntityMap[K][]> {
     skip: 0,
     limit: 1000,
   });
+
+  console.log("ALL", key, result);
 
   return result.rows;
 },
@@ -475,19 +494,17 @@ if (key === "importChecklists") {
 }
 
 if (key === "vendors") {
-  const formData = new FormData();
-
-  formData.append("vendor_code", input.vendor_code ?? "");
-  formData.append("vendor_name", input.vendor_name ?? "");
-  formData.append("address", input.address ?? "");
-  formData.append("email", input.email ?? "");
-  formData.append("countryCode", input.countryCode ?? "+91");
-  formData.append("phone", input.phone ?? "");
-  formData.append("gstin", input.gstin ?? "");
-  formData.append("pan", input.pan ?? "");
-  formData.append("type_of_service", input.type_of_service ?? "");
-
-  payload = formData;
+payload = {
+  vendor_code: input.vendor_code,
+  vendor_name: input.vendor_name,
+  address: input.address,
+  email: input.email,
+  countryCode: input.countryCode,
+  phone: input.phone,
+  gstin: input.gstin,
+  pan: input.pan,
+  type_of_service: input.type_of_service,
+};
 }
 
   if (key === "importJobs") {
@@ -604,7 +621,7 @@ if (key === "vendors") {
     vendor_name: vendor.vendor_name,
     address: vendor.address,
     email: vendor.email,
-    country_code: vendor.countryCode,
+    countryCode: vendor.countryCode,
     phone: vendor.phone,
     gstin: vendor.gstin,
     pan: vendor.pan,

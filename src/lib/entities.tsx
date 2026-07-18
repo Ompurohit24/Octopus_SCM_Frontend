@@ -643,7 +643,20 @@ export const importChecklistsConfig: EntityConfig<"importChecklists"> = {
     { name: "doProcess", label: "DO Process", type: "select", options: ["Mundra", "Gandhidham", "Party"], required: false },
     { name: "stampDuty", label: "Stamp Duty", type: "select", options: PD, default: "Pending", required: false },
     { name: "transportation", label: "Transportation", type: "select", options: ["Octopus", "Party"], required: false },
-    { name: "transporter", label: "Transporter", type: "select", options: ["Bansal", "Sai Logistics", "Chamunda"], creatable: true, showWhen: { field: "transportation", equals: "Octopus" }, required: false },
+    {
+  name: "transporter",
+  label: "Transporter",
+  type: "select",
+  optionsSource: {
+    entity: "vendors",
+    labelField: "vendor_name",
+  },
+  showWhen: {
+    field: "transportation",
+    equals: "Octopus",
+  },
+  required: false,
+},
     { name: "performaInvoice", label: "Performa Invoice", type: "select", options: PD, default: "Pending", required: false },
     { name: "cfsPayment", label: "CFS Payment", type: "select", options: PD, default: "Pending", required: false },
     { name: "otherServices", label: "Other Services", type: "services", options: ["Insurance", "CE Certificate", "Phyto", "Fumigation", "Lashing Chocking", "Palletisation"], serviceStatusOptions: PD, colSpan: 3 },

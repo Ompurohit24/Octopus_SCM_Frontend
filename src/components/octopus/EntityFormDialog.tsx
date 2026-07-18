@@ -869,10 +869,15 @@ function DynamicSelect({
 }) {
   const src = field.optionsSource;
   // const queryClient = useQueryClient();
-
+console.log("FIELD", field.name, field);
+console.log("optionsSource", field.optionsSource);
 const query = useEntityAll(
   (src?.entity ?? "customers") as EntityKey
 );
+console.log("Field:", field.name);
+console.log("Entity:", src?.entity);
+console.log("Loading:", query.isLoading);
+console.log("Data:", query.data);
   const [customOpts, setCustomOpts] = useState<string[]>(() =>
     field.creatable ? loadCustomOptions(field.name) : [],
   );
@@ -913,7 +918,18 @@ loader.then((items) => {
       return Array.from(
         new Map(
           ((query.data ?? []) as unknown as Array<Record<string, unknown>>)
-            .map((r) => {
+  .filter((r) => {
+    if (field.name === "transporter") {
+      return (
+        String(r.type_of_service ?? "")
+          .trim()
+          .toLowerCase() === "transport"
+      );
+    }
+
+    return true;
+  })
+  .map((r) => {
               const value = String(r[src.labelField] ?? "").trim();
               const secondary = src.secondaryLabelField
                 ? String(r[src.secondaryLabelField] ?? "").trim()
@@ -935,14 +951,14 @@ return Array.from(new Set(base)).map((o) => ({
   value: o,
   label: o,
 }));
-  }, [
+}, [
   src,
   query.data,
+  field.name,
   field.options,
   customOpts,
   dropdownLineNames,
 ]);
-
   const opts = dynamicOptions;
 
   const [open, setOpen] = useState(false);
@@ -967,7 +983,8 @@ const selectedValue =
       </select>
       {field.creatable &&
  !field.readOnly &&
- field.name !== "lineName" && (
+ field.name !== "lineName" &&
+ field.name !== "transporter" && (
         showAdd ? (
           <div className="flex items-center gap-1.5">
             <input
