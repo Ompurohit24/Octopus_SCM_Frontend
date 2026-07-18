@@ -335,7 +335,7 @@ const validateServices = (
         (service.tariff20 === undefined ||
           service.tariff20 === null)
       ) {
-        return `${name}: 20 Tariff Amount is required.`;
+        return `${name}: 20 FT Tariff Amount is required.`;
       }
 
       // Only require 40 tariff if 40 is checked
@@ -344,7 +344,7 @@ const validateServices = (
         (service.tariff40 === undefined ||
           service.tariff40 === null)
       ) {
-        return `${name}: 40 Tariff Amount is required.`;
+        return `${name}: 40 FT  Tariff Amount is required.`;
       }
     }
   }
