@@ -402,7 +402,7 @@ async all<K extends EntityKey>(key: K): Promise<EntityMap[K][]> {
     limit: 1000,
   });
 
-  console.log("ALL", key, result);
+  
 
   return result.rows;
 },

@@ -7,7 +7,7 @@ import { useRef } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-
+import { toast } from "sonner";
 import {
   ChevronsUpDown,
   Check,
@@ -546,13 +546,88 @@ onOpenChange(false);
           type="file"
           accept=".pdf,application/pdf"
           className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
+          onChange={async (e) => {
+  const file = e.target.files?.[0];
 
-            if (!file) return;
+  if (!file) return;
 
-            console.log("Import Job PDF selected:", file);
-          }}
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const response = await fetch(
+      `${API_URL}/import-jobs/read-pdf`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.detail || "Unable to read PDF.",
+      );
+    }
+
+    const data = result.data ?? {};
+
+    console.log("PDF extracted:", data);
+
+  const pdfFields: Record<string, unknown> = {
+  blNo: data.blNo,
+  blDate: data.blDate,
+  invoiceNo: data.invoiceNo,
+  invoiceDate: data.invoiceDate,
+  consigneeName: data.consigneeName,
+  noOfCntr: data.noOfCntr,
+  size: data.size,
+  cargoDescription: data.cargoDescription,
+};  
+
+    Object.entries(pdfFields).forEach(
+  ([fieldName, value]) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      setValue(
+        fieldName as any,
+        value as any,
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        },
+      );
+    }
+  },
+);
+
+    const filledCount = Object.values(pdfFields).filter(
+  (value) =>
+    value !== undefined &&
+    value !== null &&
+    value !== "",
+).length;
+
+toast.success(
+  `PDF read successfully. ${filledCount} fields auto-filled. Please verify before saving.`,
+);
+  } catch (error: any) {
+    console.error("PDF read error:", error);
+
+    toast.error(
+      error?.message || "Unable to read PDF."
+    );
+
+  } finally {
+    e.target.value = "";
+  }
+}}
         />
       </label>
     </div>
@@ -1063,8 +1138,6 @@ function DynamicSelect({
 }) {
   const src = field.optionsSource;
   // const queryClient = useQueryClient();
-console.log("FIELD", field.name, field);
-console.log("optionsSource", field.optionsSource);
 const entityKey = (
   field.name === "transporter"
     ? "vendors"
@@ -1072,10 +1145,7 @@ const entityKey = (
 ) as EntityKey;
 
 const query = useEntityAll(entityKey);
-console.log("Field:", field.name);
-console.log("Entity:", src?.entity);
-console.log("Loading:", query.isLoading);
-console.log("Data:", query.data);
+
   const [customOpts, setCustomOpts] = useState<string[]>(() =>
     field.creatable ? loadCustomOptions(field.name) : [],
   );
