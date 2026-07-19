@@ -4,6 +4,8 @@ export type ID = string;
 export type EntityKey =
   | "customers"
   | "vendors"
+  | "pubOperations"
+  | "importOperations"
   | "shippingLines"
   | "ports"
   | "containers"
@@ -21,7 +23,6 @@ export type EntityKey =
   | "reportRuns"
   | "notifications"
   | "type_of_service";
-
 // export interface Customer {
 //   id: ID;
 //   code: string;
@@ -80,6 +81,61 @@ export interface Vendor {
   pan: string;
 
   type_of_service: string;
+
+  is_active: boolean;
+  is_deleted: boolean;
+
+  created_by?: string;
+  updated_by?: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PubOperation {
+  id: ID;
+
+  name: string;
+  mobile_number: string;
+  email: string;
+
+  is_active: boolean;
+  is_deleted: boolean;
+
+  created_by?: string;
+  updated_by?: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportOperation {
+  id: ID;
+
+  name: string;
+  mobile_number: string;
+  email: string;
+
+  is_active: boolean;
+  is_deleted: boolean;
+
+  created_by?: string;
+  updated_by?: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Operation {
+  id: ID;
+
+  name: string;
+  mobile_number: string;
+  email: string;
+
+  operation_type:
+    | "Pub Operations"
+    | "Import Operations";
 
   is_active: boolean;
   is_deleted: boolean;
@@ -152,6 +208,7 @@ export interface ImportJob {
   invoiceNo?: string;
   invoiceDate?: string;
   noOfCntr?: number;
+  containerNumbers?: string;
   size?: string;
   consigneeName?: string;
   consigneeAddress?: string;
@@ -353,6 +410,8 @@ export interface NotificationItem {
 export type EntityMap = {
   customers: Customer;
   vendors: Vendor;
+     pubOperations: PubOperation;
+  importOperations: ImportOperation;
   shippingLines: ShippingLine;
   ports: Port;
   containers: ContainerType;

@@ -583,10 +583,16 @@ onOpenChange(false);
   invoiceNo: data.invoiceNo,
   invoiceDate: data.invoiceDate,
   consigneeName: data.consigneeName,
+  consigneeAddress: data.consigneeAddress,
   noOfCntr: data.noOfCntr,
   size: data.size,
+
+  containerNumbers: Array.isArray(data.containerNumbers)
+    ? data.containerNumbers.join(", ")
+    : "",
+
   cargoDescription: data.cargoDescription,
-};  
+}; 
 
     Object.entries(pdfFields).forEach(
   ([fieldName, value]) => {

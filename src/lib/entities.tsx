@@ -524,6 +524,10 @@ export const importJobsConfig: EntityConfig<"importJobs"> = {
     { key: "invoiceNo", label: "Invoice No", sortable: true },
     { key: "invoiceDate", label: "Invoice Date", render: (r) => formatDate(r.invoiceDate) },
     { key: "noOfCntr", label: "No of Cntr", sortable: true },
+    {
+  key: "containerNumbers",
+  label: "Container Numbers",
+},
     { key: "size", label: "Size", sortable: true },
     { key: "consigneeName", label: "Name of Consignee", sortable: true },
     { key: "consigneeAddress", label: "Address of Consignee" },
@@ -557,8 +561,29 @@ export const importJobsConfig: EntityConfig<"importJobs"> = {
   required: true,
   default: TODAY,
 },
-    { name: "noOfCntr", label: "No of Cntr", type: "number", min: 0, required: true },
-    { name: "size", label: "Size", type: "select", options: ["20", "40", ], default: "40", required: true },
+    {
+  name: "noOfCntr",
+  label: "No of Cntr",
+  type: "number",
+  min: 0,
+  required: true,
+},
+{
+  name: "containerNumbers",
+  label: "Container Numbers",
+  type: "text",
+  required: true,
+  placeholder: "DFSU1259598, TCLU3417974",
+  colSpan: 2,
+},
+{
+  name: "size",
+  label: "Size",
+  type: "select",
+  options: ["20", "40"],
+  default: "40",
+  required: true,
+},
     {
   name: "lineName",
   label: "Line Name",
@@ -934,3 +959,111 @@ export const CONFIGS = {
   rules: rulesConfig,
   documents: documentsConfig,
 } as const;
+
+export const pubOperationsConfig: EntityConfig<"pubOperations"> = {
+  key: "pubOperations",
+
+  singular: "Pub Operation",
+  plural: "Pub Operations",
+
+  description: "Manage Pub Operations contacts.",
+
+  searchPlaceholder:
+    "Search by name, mobile number or email ID...",
+
+  columns: [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+    },
+    {
+      key: "mobile_number",
+      label: "Mobile Number",
+      sortable: true,
+    },
+    {
+      key: "email",
+      label: "Email ID",
+      sortable: true,
+    },
+  ],
+
+  fields: [
+    {
+      name: "name",
+      label: "Name",
+      type: "text",
+      required: true,
+      placeholder: "Enter name",
+    },
+    {
+      name: "mobile_number",
+      label: "Mobile Number",
+      type: "text",
+      required: true,
+      placeholder: "Enter mobile number",
+    },
+   {
+  name: "email",
+  label: "Email ID",
+  type: "text",
+  required: true,
+  placeholder: "Enter email ID",
+},
+  ],
+};
+
+export const importOperationsConfig: EntityConfig<"importOperations"> = {
+  key: "importOperations",
+
+  singular: "Import Operation",
+  plural: "Import Operations",
+
+  description: "Manage Import Operations contacts.",
+
+  searchPlaceholder:
+    "Search by name, mobile number or email ID...",
+
+  columns: [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+    },
+    {
+      key: "mobile_number",
+      label: "Mobile Number",
+      sortable: true,
+    },
+    {
+      key: "email",
+      label: "Email ID",
+      sortable: true,
+    },
+  ],
+
+  fields: [
+    {
+      name: "name",
+      label: "Name",
+      type: "text",
+      required: true,
+      placeholder: "Enter name",
+    },
+    {
+      name: "mobile_number",
+      label: "Mobile Number",
+      type: "text",
+      required: true,
+      placeholder: "Enter mobile number",
+    },
+   {
+  name: "email",
+  label: "Email ID",
+  type: "text",
+  required: true,
+  placeholder: "Enter email ID",
+},
+  ],
+};

@@ -65,6 +65,10 @@ message =
 const ROUTES: Partial<Record<EntityKey, string>> = {
   customers: "/customers",
   vendors: "/vendors",
+
+  pubOperations: "/pub-operations",
+  importOperations: "/import-operations",
+
   importJobs: "/import-jobs",
   importChecklists: "/import-workflows",
   type_of_service: "/masters/type-of-services",
@@ -266,6 +270,28 @@ igmDate: item.igm_date?.split("T")[0] ?? "",
   };
 }
 
+
+function normalizeContainerNumbers(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/[\n,]+/)
+      .map((item) => item.trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function containerNumbersToText(value: unknown): string {
+  return normalizeContainerNumbers(value).join(", ");
+}
+
 export const apiClient = {
 async list<K extends EntityKey>(
   key: K,
@@ -330,6 +356,11 @@ async list<K extends EntityKey>(
         invoiceDate: item.invoice_date,
 
         noOfCntr: item.no_of_cntr,
+
+    containerNumbers: containerNumbersToText(
+  item.container_numbers,
+),
+
         size: item.size,
 
         lineName: item.line_name,
@@ -343,7 +374,7 @@ async list<K extends EntityKey>(
         cargoDescription: item.cargo_description,
 
         createdAt: item.created_at,
-      })) as EntityMap[K][],
+      })) as unknown as EntityMap[K][],
       total: response.total,
       page,
       pageSize,
@@ -417,26 +448,69 @@ async get<K extends EntityKey>(
     throw new Error(`${key} backend not implemented`);
   }
 
-  // return request<EntityMap[K]>(`${route}/${id}`);
-const item = await request<any>(`${route}/${id}`);
+  const item = await request<any>(`${route}/${id}`);
 
-if (key === "importChecklists") {
-  return fromImportWorkflow(item) as unknown as EntityMap[K];
-}
+  // ---------------- Import Workflow ----------------
 
-return {
-  ...item,
-  id: item.id ?? item._id,
+  if (key === "importChecklists") {
+    return fromImportWorkflow(item) as unknown as EntityMap[K];
+  }
 
-  customerCode: item.customer_code,
-  customer_code: item.customer_code,
+  // ---------------- Import Jobs ----------------
 
-  customerName: item.customer_name,
-  customer_name: item.customer_name,
+  if (key === "importJobs") {
+    return {
+      id: item.id ?? item._id,
 
-  countryCode: item.country_code,
-};
+      job_id: item.id ?? item._id,
+      job_number: item.job_number,
+
+      jobNo: item.job_number,
+
+      blNo: item.bl_no,
+      blDate: item.bl_date,
+
+      invoiceNo: item.invoice_no,
+      invoiceDate: item.invoice_date,
+
+      noOfCntr: item.no_of_cntr,
+
+      containerNumbers: containerNumbersToText(
+        item.container_numbers,
+      ),
+
+      size: item.size,
+
+      lineName: item.line_name,
+      forwarderName: item.forwarder,
+
+      eta: item.eta,
+
+      consigneeName: item.consignee_name,
+      consigneeAddress: item.consignee_address,
+
+      cargoDescription: item.cargo_description,
+
+      createdAt: item.created_at,
+    } as unknown as EntityMap[K];
+  }
+
+  // ---------------- Default ----------------
+
+  return {
+    ...item,
+    id: item.id ?? item._id,
+
+    customerCode: item.customer_code,
+    customer_code: item.customer_code,
+
+    customerName: item.customer_name,
+    customer_name: item.customer_name,
+
+    countryCode: item.country_code,
+  };
 },
+
 
 async create<K extends EntityKey>(
   key: K,
@@ -514,29 +588,42 @@ payload = {
 };
 }
 
-  if (key === "importJobs") {
-    payload = {
-      job_no: input.jobNo,
-      bl_no: input.blNo,
-      beNo: input.be_no,
-      bl_date: input.blDate,
-      invoice_no: input.invoiceNo,
-      invoice_date: input.invoiceDate,
-      no_of_cntr: input.noOfCntr,
-      size: input.size,
-      line_name: input.lineName,
-      forwarder: input.forwarderName,
-      eta: input.eta,
-      consignee_name: input.consigneeName,
-      consignee_address: input.consigneeAddress,
-      cargo_description: input.cargoDescription,
-    };
-  }
- const item = await request<any>(route, {
+ if (key === "importJobs") {
+  payload = {
+    job_no: input.jobNo,
+
+    bl_no: input.blNo,
+    bl_date: input.blDate,
+
+    invoice_no: input.invoiceNo,
+    invoice_date: input.invoiceDate,
+
+    no_of_cntr: input.noOfCntr,
+
+    container_numbers: normalizeContainerNumbers(
+      input.containerNumbers,
+    ),
+
+    size: input.size,
+
+    line_name: input.lineName,
+    forwarder: input.forwarderName,
+
+    eta: input.eta,
+
+    consignee_name: input.consigneeName,
+    consignee_address: input.consigneeAddress,
+
+    cargo_description: input.cargoDescription,
+  };
+}
+
+const item = await request<any>(route, {
   method: "POST",
-  body: payload instanceof FormData
-    ? payload
-    : JSON.stringify(payload),
+  body:
+    payload instanceof FormData
+      ? payload
+      : JSON.stringify(payload),
 });
 
 if (key === "importJobs") {
@@ -545,22 +632,34 @@ if (key === "importJobs") {
 
     job_id: item.id ?? item._id,
     job_number: item.job_number,
-    
+
     jobNo: item.job_number,
     blNo: item.bl_no,
     blDate: item.bl_date,
+
     invoiceNo: item.invoice_no,
     invoiceDate: item.invoice_date,
+
     noOfCntr: item.no_of_cntr,
+
+    containerNumbers: containerNumbersToText(
+      item.container_numbers,
+    ),
+
     size: item.size,
+
     lineName: item.line_name,
     forwarderName: item.forwarder,
+
     eta: item.eta,
+
     consigneeName: item.consignee_name,
     consigneeAddress: item.consignee_address,
+
     cargoDescription: item.cargo_description,
+
     createdAt: item.created_at,
-  } as EntityMap[K];
+  }  as unknown as EntityMap[K];
 }
 
 return {
@@ -635,7 +734,35 @@ if (key === "vendors") {
     type_of_service: vendor.type_of_service,
   } as any;
 }
+if (key === "importJobs") {
+  const job = patch as any;
 
+  patch = {
+    bl_no: job.blNo,
+    bl_date: job.blDate,
+
+    invoice_no: job.invoiceNo,
+    invoice_date: job.invoiceDate,
+
+    no_of_cntr: job.noOfCntr,
+
+    container_numbers: normalizeContainerNumbers(
+      job.containerNumbers,
+    ),
+
+    size: job.size,
+
+    line_name: job.lineName,
+    forwarder: job.forwarderName,
+
+    eta: job.eta,
+
+    consignee_name: job.consigneeName,
+    consignee_address: job.consigneeAddress,
+
+    cargo_description: job.cargoDescription,
+  } as any;
+}
   if (!route) {
     throw new Error(`${key} backend not implemented`);
   }
@@ -645,37 +772,7 @@ if (key === "vendors") {
     body: JSON.stringify(patch),
   });
 
-  if (key === "importJobs") {
-    return {
-      id: item.id ?? item._id,
-
-      job_id: item.id ?? item._id,
-      job_number: item.job_number,
-
-      jobNo: item.job_number,
-      blNo: item.bl_no,
-      beNo: item.be_no,
-      blDate: item.bl_date,
-
-      invoiceNo: item.invoice_no,
-      invoiceDate: item.invoice_date,
-
-      noOfCntr: item.no_of_cntr,
-      size: item.size,
-
-      lineName: item.line_name,
-      forwarderName: item.forwarder,
-
-      eta: item.eta,
-
-      consigneeName: item.consignee_name,
-      consigneeAddress: item.consignee_address,
-
-      cargoDescription: item.cargo_description,
-
-      createdAt: item.created_at,
-    } as EntityMap[K];
-  }
+  
 
   return {
     ...item,
