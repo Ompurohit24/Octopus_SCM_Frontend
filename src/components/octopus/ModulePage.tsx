@@ -78,8 +78,13 @@ interface CrudProps<K extends EntityKey> {
   description?: string;
   config: EntityConfig<K>;
   extraHeaderActions?: ReactNode;
+
   /** Additional entries appended to the Export dropdown. */
   extraExports?: { label: string; handler: () => void | Promise<void> }[];
+
+  /** Hide the default export entry and use only extraExports. */
+  hideDefaultExport?: boolean;
+
   tabs?: never;
   activeTab?: never;
 }
@@ -246,6 +251,7 @@ function HeaderBar({
   onExport,
   exportLabel = "Export",
   extraExports,
+  hideDefaultExport = false,
   onNew,
   newLabel = "New",
   extraActions,
@@ -257,6 +263,7 @@ function HeaderBar({
   onExport: () => void;
   exportLabel?: string;
   extraExports?: { label: string; handler: () => void | Promise<void> }[];
+  hideDefaultExport?: boolean;
   onNew: () => void;
   newLabel?: string;
   extraActions?: ReactNode;
@@ -304,7 +311,7 @@ function HeaderBar({
             </button>
             {openExport && (
               <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-elevated">
-                <button
+                {/* <button
                   onClick={() => {
                     setOpenExport(false);
                     onExport();
@@ -312,7 +319,19 @@ function HeaderBar({
                   className="block w-full px-3 py-2 text-left text-xs font-medium hover:bg-accent"
                 >
                   {exportLabel}
-                </button>
+                </button> */}
+              {!hideDefaultExport && (
+  <button
+    onClick={() => {
+      setOpenExport(false);
+      onExport();
+    }}
+    className="block w-full px-3 py-2 text-left text-xs font-medium hover:bg-accent"
+  >
+    {exportLabel}
+  </button>
+)}
+
                 {extraExports!.map((opt) => (
                   <button
                     key={opt.label}
@@ -320,7 +339,9 @@ function HeaderBar({
                       setOpenExport(false);
                       void opt.handler();
                     }}
-                    className="block w-full border-t border-border px-3 py-2 text-left text-xs font-medium hover:bg-accent"
+                    className={`block w-full px-3 py-2 text-left text-xs font-medium hover:bg-accent ${
+  !hideDefaultExport ? "border-t border-border" : ""
+}`}
                   >
                     {opt.label}
                   </button>
@@ -364,6 +385,7 @@ function CrudModulePage<K extends EntityKey>({
   config,
   extraHeaderActions,
   extraExports,
+  hideDefaultExport,
 }: CrudProps<K>) {
   const heading = title ?? config.plural;
   const desc = description ?? config.description;
@@ -554,6 +576,7 @@ function openCreate() {
         onExport={handleExport}
         exportLabel={`Export ${config.plural}`}
         extraExports={extraExports}
+         hideDefaultExport={hideDefaultExport}
         onNew={openCreate}
         newLabel={`New ${config.singular}`}
         extraActions={extraHeaderActions}

@@ -7,11 +7,14 @@ import { useRef } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+
 import {
   ChevronsUpDown,
   Check,
   Download,
   ChevronDown,
+  Upload,
+  FileText,
 } from "lucide-react";
 // import { useEntityAll } from "@/lib/api/hooks";
 import { Pencil } from "lucide-react";
@@ -436,7 +439,7 @@ onOpenChange(false);
 
   <div className="flex items-center gap-2">
 
-    {title === "Update Job" && (
+    {/* {title === "Update Job" && (
       <Popover
         open={exportMenuOpen}
         onOpenChange={setExportMenuOpen}
@@ -495,7 +498,7 @@ onOpenChange(false);
           </button>
         </PopoverContent>
       </Popover>
-    )}
+    )} */}
 
     <button
       type="button"
@@ -515,6 +518,46 @@ onOpenChange(false);
         )}
         <form id={formId} onSubmit={submit} className="grid max-h-[75dvh] grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
 
+          {title === "New Import Job" && (
+  <div className="border-b border-border bg-muted/20 px-5 py-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-background p-4">
+      <div className="flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10">
+          <FileText className="h-5 w-5 text-primary" />
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold">
+            Auto-fill from PDF
+          </p>
+
+          <p className="text-xs text-muted-foreground">
+            Upload Bill of Entry / Import Checklist PDF to fill Import Job details.
+          </p>
+        </div>
+      </div>
+
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-sm hover:opacity-95">
+        <Upload className="h-4 w-4" />
+
+        Read PDF
+
+        <input
+          type="file"
+          accept=".pdf,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+
+            if (!file) return;
+
+            console.log("Import Job PDF selected:", file);
+          }}
+        />
+      </label>
+    </div>
+  </div>
+)}
 
           {fields.filter(isVisible).map((f) => {
             const err = errors[f.name]?.message as string | undefined;
