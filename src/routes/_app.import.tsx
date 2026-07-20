@@ -57,13 +57,32 @@ const existing = useMemo(() => {
   );
 }, [checklists.data, selectedJob]);
 
-const defaults = useMemo<Partial<ImportChecklist>>(
+const defaults = useMemo(
   () => ({
     ...(existing ?? {}),
-    jobNo: selectedJob?.jobNo ?? selectedJobNo,
-    blNo: selectedJob?.blNo,
+
+    // Exact MongoDB Import Job ID required by
+    // Purchase Order service-status lookup.
+    job_id: selectedJob?.id ?? "",
+
+    // Keep backend job number available too.
+    job_number:
+      selectedJob?.jobNo ??
+      selectedJobNo,
+
+    // Existing frontend fields.
+    jobNo:
+      selectedJob?.jobNo ??
+      selectedJobNo,
+
+    blNo:
+      selectedJob?.blNo ?? "",
   }),
-  [existing, selectedJob, selectedJobNo],
+  [
+    existing,
+    selectedJob,
+    selectedJobNo,
+  ],
 );
 
   const banner = selectedJob ? (
