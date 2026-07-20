@@ -71,6 +71,9 @@ const ROUTES: Partial<Record<EntityKey, string>> = {
 
   importJobs: "/import-jobs",
   importChecklists: "/import-workflows",
+
+  purchaseOrders: "/purchase-orders",
+
   type_of_service: "/masters/type-of-services",
 };
 export interface ListQuery {

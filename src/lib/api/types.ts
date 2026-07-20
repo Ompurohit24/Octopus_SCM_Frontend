@@ -12,6 +12,7 @@ export type EntityKey =
   | "hsCodes"
   | "importJobs"
   | "importChecklists"
+  | "purchaseOrders"
   | "exportJobs"
   | "trips"
   | "invoices"
@@ -228,8 +229,18 @@ export interface ImportJob {
 
 export type ServiceItem = {
   status: string;
-  tariff?: number;
+
   unit?: "Container" | "BL" | "";
+
+  // BL tariff
+  tariff?: number;
+
+  // Container tariffs
+  tariff20?: number;
+  tariff40?: number;
+
+  enable20?: boolean;
+  enable40?: boolean;
 };
 
 export type ServiceMap = Record<string, ServiceItem>;
@@ -258,6 +269,8 @@ export interface ImportChecklist {
 
   other_gov_agency?: "Yes" | "No";
   other_gov_agency_type?: ServiceMap;
+
+  other_services?: ServiceMap;
 
   assessment_type?: string;
   cfs_name?: string;
@@ -407,17 +420,62 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface PurchaseOrder {
+  id: ID;
+
+  po_number: string;
+
+  job_id: string;
+  job_number: string;
+
+  consignee_name: string;
+
+  category:
+    | "Other Gov Agency"
+    | "Other Services";
+
+  service_name: string;
+
+  vendor_id: string;
+  vendor_code?: string;
+  vendor_name: string;
+
+  service_status: string;
+
+  unit?: "Container" | "BL";
+
+  tariff?: number;
+
+  tariff_20?: number;
+  tariff_40?: number;
+
+  enable_20?: boolean;
+  enable_40?: boolean;
+
+  status:
+    | "Draft"
+    | "Issued"
+    | "Cancelled";
+
+  created_at: string;
+  updated_at: string;
+}
+
 export type EntityMap = {
   customers: Customer;
   vendors: Vendor;
-     pubOperations: PubOperation;
+  pubOperations: PubOperation;
   importOperations: ImportOperation;
   shippingLines: ShippingLine;
   ports: Port;
   containers: ContainerType;
   hsCodes: HSCode;
+
   importJobs: ImportJob;
   importChecklists: ImportChecklist;
+
+  purchaseOrders: PurchaseOrder;
+
   exportJobs: ExportJob;
   trips: Trip;
   invoices: Invoice;
@@ -428,8 +486,9 @@ export type EntityMap = {
   documents: DocumentItem;
   reportRuns: ReportRun;
   notifications: NotificationItem;
+
   type_of_service: {
-  id?: string;
-  name: string;
-};
+    id?: string;
+    name: string;
+  };
 };

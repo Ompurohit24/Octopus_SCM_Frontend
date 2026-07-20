@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTransportRouteImport } from './routes/_app.transport'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
+import { Route as AppPurchaseOrdersRouteImport } from './routes/_app.purchase-orders'
 import { Route as AppMasterRouteImport } from './routes/_app.master'
 import { Route as AppImportRouteImport } from './routes/_app.import'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
@@ -52,6 +53,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPurchaseOrdersRoute = AppPurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMasterRoute = AppMasterRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof AppHelpRoute
   '/import': typeof AppImportRoute
   '/master': typeof AppMasterRoute
+  '/purchase-orders': typeof AppPurchaseOrdersRoute
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/transport': typeof AppTransportRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/help': typeof AppHelpRoute
   '/import': typeof AppImportRoute
   '/master': typeof AppMasterRoute
+  '/purchase-orders': typeof AppPurchaseOrdersRoute
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/transport': typeof AppTransportRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/_app/help': typeof AppHelpRoute
   '/_app/import': typeof AppImportRoute
   '/_app/master': typeof AppMasterRoute
+  '/_app/purchase-orders': typeof AppPurchaseOrdersRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/transport': typeof AppTransportRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/import'
     | '/master'
+    | '/purchase-orders'
     | '/reports'
     | '/settings'
     | '/transport'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/import'
     | '/master'
+    | '/purchase-orders'
     | '/reports'
     | '/settings'
     | '/transport'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/_app/help'
     | '/_app/import'
     | '/_app/master'
+    | '/_app/purchase-orders'
     | '/_app/reports'
     | '/_app/settings'
     | '/_app/transport'
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/purchase-orders': {
+      id: '/_app/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof AppPurchaseOrdersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/master': {
@@ -328,6 +347,7 @@ interface AppRouteChildren {
   AppHelpRoute: typeof AppHelpRoute
   AppImportRoute: typeof AppImportRoute
   AppMasterRoute: typeof AppMasterRoute
+  AppPurchaseOrdersRoute: typeof AppPurchaseOrdersRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTransportRoute: typeof AppTransportRoute
@@ -343,6 +363,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHelpRoute: AppHelpRoute,
   AppImportRoute: AppImportRoute,
   AppMasterRoute: AppMasterRoute,
+  AppPurchaseOrdersRoute: AppPurchaseOrdersRoute,
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTransportRoute: AppTransportRoute,

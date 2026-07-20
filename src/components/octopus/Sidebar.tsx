@@ -16,6 +16,7 @@ import {
   ChevronsRight,
   FileText,
   Info,
+  ClipboardList,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -26,8 +27,17 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/master", label: "Master", icon: Database },
   { to: "/import", label: "Import", icon: PackageOpen },
+  {
+    to: "/purchase-orders",
+    label: "Purchase Order",
+    icon: ClipboardList,
+  }, 
   { to: "/export", label: "Export", icon: Ship },
   { to: "/transport", label: "Transport", icon: Truck },
+
+ // Purchase Orders generated from job services
+   
+
   { to: "/finance", label: "Finance", icon: Wallet },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/automation", label: "Automation", icon: Zap },
