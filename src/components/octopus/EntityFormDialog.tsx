@@ -2021,29 +2021,441 @@ function ServicesChecklist({
                 </div>
 
 
-                {checked && (
+             {checked && (
+  <div className="mt-3 space-y-3 border-t pt-3">
 
-                  // =====================================
-                  // KEEP YOUR CURRENT EXISTING CONTENT
-                  // FROM HERE:
-                  //
-                  // <div className="mt-3 ...">
-                  //   Job Status
-                  //   Tariff Unit
-                  //   Container 20/40
-                  //   Tariff Amount
-                  //   ...
-                  // </div>
-                  //
-                  // DO NOT CHANGE THAT CODE.
-                  // =====================================
+    {/* JOB STATUS */}
+    <div className="space-y-1">
 
-                  <div className="mt-3 space-y-3 border-t pt-3">
+      <label className="text-xs font-medium">
+        Job Status
+      </label>
 
-                    {/* KEEP YOUR EXISTING SERVICE FIELDS HERE */}
+      <select
+        value={service.status ?? ""}
+        onChange={(e) => {
+          const nextStatus = e.target.value;
 
-                  </div>
-                )}
+          updateService(
+            opt,
+            nextStatus === "Done"
+              ? {
+                  status: nextStatus,
+                }
+              : {
+                  status: nextStatus,
+
+                  // Clear tariff configuration
+                  // when service is no longer Done.
+                  unit: undefined,
+                  tariff: undefined,
+
+                  tariff20: undefined,
+                  tariff40: undefined,
+
+                  enable20: false,
+                  enable40: false,
+                },
+          );
+        }}
+        className="
+          h-10
+          w-full
+          rounded-lg
+          border
+          border-border
+          bg-background
+          px-3
+          text-sm
+          outline-none
+          focus:border-ring
+          focus:ring-2
+          focus:ring-ring/20
+        "
+      >
+        {statusOptions.map(
+          (statusOption) => (
+            <option
+              key={statusOption}
+              value={statusOption}
+            >
+              {statusOption}
+            </option>
+          ),
+        )}
+      </select>
+
+    </div>
+
+
+    {/* SHOW TARIFF ONLY WHEN DONE */}
+    {service.status === "Done" && (
+      <>
+
+        {/* TARIFF UNIT */}
+        <div className="space-y-1">
+
+          <label className="text-xs font-medium">
+            Tariff Unit
+          </label>
+
+          <select
+            value={service.unit ?? ""}
+            onChange={(e) => {
+              const unit =
+                e.target.value;
+
+              if (unit === "BL") {
+                updateService(
+                  opt,
+                  {
+                    unit,
+
+                    tariff20: undefined,
+                    tariff40: undefined,
+
+                    enable20: false,
+                    enable40: false,
+                  },
+                );
+
+                return;
+              }
+
+              if (
+                unit === "Container"
+              ) {
+                updateService(
+                  opt,
+                  {
+                    unit,
+
+                    tariff: undefined,
+                  },
+                );
+
+                return;
+              }
+
+              updateService(
+                opt,
+                {
+                  unit: undefined,
+
+                  tariff: undefined,
+
+                  tariff20: undefined,
+                  tariff40: undefined,
+
+                  enable20: false,
+                  enable40: false,
+                },
+              );
+            }}
+            className="
+              h-10
+              w-full
+              rounded-lg
+              border
+              border-border
+              bg-background
+              px-3
+              text-sm
+              outline-none
+              focus:border-ring
+              focus:ring-2
+              focus:ring-ring/20
+            "
+          >
+
+            <option value="">
+              Select Tariff Unit
+            </option>
+
+            <option value="Container">
+              Container
+            </option>
+
+            <option value="BL">
+              BL
+            </option>
+
+          </select>
+
+        </div>
+
+
+        {/* BL TARIFF */}
+        {service.unit === "BL" && (
+          <div className="space-y-1">
+
+            <label className="text-xs font-medium">
+              Tariff Amount
+            </label>
+
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={
+                service.tariff ??
+                ""
+              }
+              onChange={(e) => {
+
+                const raw =
+                  e.target.value;
+
+                updateService(
+                  opt,
+                  {
+                    tariff:
+                      raw === ""
+                        ? undefined
+                        : Number(raw),
+                  },
+                );
+              }}
+              placeholder="Enter tariff amount"
+              className="
+                h-10
+                w-full
+                rounded-lg
+                border
+                border-border
+                bg-background
+                px-3
+                text-sm
+                outline-none
+                focus:border-ring
+                focus:ring-2
+                focus:ring-ring/20
+              "
+            />
+
+          </div>
+        )}
+
+
+        {/* CONTAINER TARIFF */}
+        {service.unit ===
+          "Container" && (
+          <div className="space-y-3">
+
+            <label className="text-xs font-medium">
+              Container Size & Tariff
+            </label>
+
+
+            {/* 20 FT */}
+            <div
+              className="
+                rounded-lg
+                border
+                border-border
+                bg-background
+                p-3
+              "
+            >
+
+              <label className="flex items-center gap-2">
+
+                <input
+                  type="checkbox"
+                  checked={
+                    !!service.enable20
+                  }
+                  onChange={(e) => {
+
+                    const enabled =
+                      e.target.checked;
+
+                    updateService(
+                      opt,
+                      {
+                        enable20:
+                          enabled,
+
+                        tariff20:
+                          enabled
+                            ? service.tariff20
+                            : undefined,
+                      },
+                    );
+                  }}
+                  className="size-4"
+                />
+
+                <span className="text-sm font-medium">
+                  20 FT
+                </span>
+
+              </label>
+
+
+              {service.enable20 && (
+                <div className="mt-3 space-y-1">
+
+                  <label className="text-xs font-medium">
+                    20 FT Tariff Amount
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={
+                      service.tariff20 ??
+                      ""
+                    }
+                    onChange={(e) => {
+
+                      const raw =
+                        e.target.value;
+
+                      updateService(
+                        opt,
+                        {
+                          tariff20:
+                            raw === ""
+                              ? undefined
+                              : Number(
+                                  raw,
+                                ),
+                        },
+                      );
+                    }}
+                    placeholder="Enter 20 FT tariff"
+                    className="
+                      h-10
+                      w-full
+                      rounded-lg
+                      border
+                      border-border
+                      bg-background
+                      px-3
+                      text-sm
+                      outline-none
+                      focus:border-ring
+                      focus:ring-2
+                      focus:ring-ring/20
+                    "
+                  />
+
+                </div>
+              )}
+
+            </div>
+
+
+            {/* 40 FT */}
+            <div
+              className="
+                rounded-lg
+                border
+                border-border
+                bg-background
+                p-3
+              "
+            >
+
+              <label className="flex items-center gap-2">
+
+                <input
+                  type="checkbox"
+                  checked={
+                    !!service.enable40
+                  }
+                  onChange={(e) => {
+
+                    const enabled =
+                      e.target.checked;
+
+                    updateService(
+                      opt,
+                      {
+                        enable40:
+                          enabled,
+
+                        tariff40:
+                          enabled
+                            ? service.tariff40
+                            : undefined,
+                      },
+                    );
+                  }}
+                  className="size-4"
+                />
+
+                <span className="text-sm font-medium">
+                  40 FT
+                </span>
+
+              </label>
+
+
+              {service.enable40 && (
+                <div className="mt-3 space-y-1">
+
+                  <label className="text-xs font-medium">
+                    40 FT Tariff Amount
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={
+                      service.tariff40 ??
+                      ""
+                    }
+                    onChange={(e) => {
+
+                      const raw =
+                        e.target.value;
+
+                      updateService(
+                        opt,
+                        {
+                          tariff40:
+                            raw === ""
+                              ? undefined
+                              : Number(
+                                  raw,
+                                ),
+                        },
+                      );
+                    }}
+                    placeholder="Enter 40 FT tariff"
+                    className="
+                      h-10
+                      w-full
+                      rounded-lg
+                      border
+                      border-border
+                      bg-background
+                      px-3
+                      text-sm
+                      outline-none
+                      focus:border-ring
+                      focus:ring-2
+                      focus:ring-ring/20
+                    "
+                  />
+
+                </div>
+              )}
+
+            </div>
+
+          </div>
+        )}
+
+      </>
+    )}
+
+  </div>
+)}
 
               </div>
             );
