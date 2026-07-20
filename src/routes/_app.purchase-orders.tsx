@@ -8,6 +8,7 @@ import type {
   ImportJob,
   ServiceItem,
   Vendor,
+  PurchaseOrder,
 } from "@/lib/api/types";
 import { toast } from "sonner";
 
@@ -41,6 +42,9 @@ function PurchaseOrdersRoute() {
 
     const [selectedRow, setSelectedRow] =
   useState<PurchaseOrderServiceRow | null>(null);
+
+  const [viewPO, setViewPO] =
+  useState<PurchaseOrder | null>(null);
 
 const [selectedVendorId, setSelectedVendorId] =
   useState("");
@@ -167,7 +171,7 @@ const createPurchaseOrder =
   const loading = jobsLoading || workflowsLoading;
 
   const existingPOMap = useMemo(() => {
-  const map = new Map<string, string>();
+  const map = new Map<string, PurchaseOrder>();
 
   purchaseOrders.forEach((po) => {
     if (po.status === "Cancelled") return;
@@ -178,7 +182,7 @@ const createPurchaseOrder =
       po.service_name,
     ].join("|");
 
-    map.set(key, po.po_number);
+    map.set(key, po);
   });
 
   return map;
@@ -197,6 +201,36 @@ function getExistingPO(
     ) ?? null
   );
 }
+
+const eligibleVendors = useMemo(() => {
+  if (!selectedRow) {
+    return [];
+  }
+
+  const service = selectedRow.serviceName
+    .trim()
+    .toLowerCase();
+
+  return vendors.filter((vendor) => {
+    if (
+      vendor.is_active === false ||
+      vendor.is_deleted === true
+    ) {
+      return false;
+    }
+
+    const vendorServices = String(
+      vendor.type_of_service ?? "",
+    )
+      .split(",")
+      .map((item) =>
+        item.trim().toLowerCase(),
+      )
+      .filter(Boolean);
+
+    return vendorServices.includes(service);
+  });
+}, [vendors, selectedRow]);
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -332,16 +366,32 @@ function getExistingPO(
                     </TableCell>
 
                     <TableCell>
-                      <span className="text-muted-foreground">
-                        Not Assigned
-                      </span>
-                    </TableCell>
+  {getExistingPO(row) ? (
+    <span className="font-medium">
+      {getExistingPO(row)?.vendor_name}
+    </span>
+  ) : (
+    <span className="text-muted-foreground">
+      Not Assigned
+    </span>
+  )}
+</TableCell>
 
                     <TableCell className="text-right">
-                      {getExistingPO(row) ? (
-  <span className="inline-flex rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">
-    {getExistingPO(row)}
-  </span>
+ {getExistingPO(row) ? (
+  <button
+  type="button"
+  onClick={() => {
+    const po = getExistingPO(row);
+
+    if (po) {
+      setViewPO(po);
+    }
+  }}
+  className="inline-flex rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-colors hover:bg-green-200"
+>
+  {getExistingPO(row)?.po_number}
+</button>
 ) : (
   <button
     type="button"
@@ -449,24 +499,25 @@ function getExistingPO(
                   Select Vendor...
                 </option>
 
-                {vendors
-                  .filter(
-                    (vendor) =>
-                      vendor.is_active !== false &&
-                      vendor.is_deleted !== true,
-                  )
-                  .map((vendor) => (
-                    <option
-                      key={vendor.id}
-                      value={vendor.id}
-                    >
-                      {vendor.vendor_name}
-                      {vendor.type_of_service
-                        ? ` — ${vendor.type_of_service}`
-                        : ""}
-                    </option>
-                  ))}
+                {eligibleVendors.map((vendor) => (
+  <option
+    key={vendor.id}
+    value={vendor.id}
+  >
+    {vendor.vendor_name}
+    {vendor.type_of_service
+      ? ` — ${vendor.type_of_service}`
+      : ""}
+  </option>
+))}
               </select>
+              {eligibleVendors.length === 0 && (
+  <p className="mt-2 text-xs text-amber-600">
+    No vendor is configured for{" "}
+    <strong>{selectedRow.serviceName}</strong>.
+    Add this service to a vendor in Vendor Master first.
+  </p>
+)}
             </div>
 
             {/* Actions */}
@@ -564,6 +615,151 @@ function getExistingPO(
         </div>
       )}
 
+{viewPO && (
+  <div
+    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+    onClick={() => setViewPO(null)}
+  >
+    <div
+      className="w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div>
+          <h2 className="text-lg font-semibold">
+            Purchase Order
+          </h2>
+
+          <p className="mt-1 text-sm font-medium text-primary">
+            {viewPO.po_number}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setViewPO(null)}
+          className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
+          <Info
+            label="PO Number"
+            value={viewPO.po_number}
+          />
+
+          <Info
+            label="Job Number"
+            value={viewPO.job_number}
+          />
+
+          <Info
+            label="Status"
+            value={viewPO.status}
+          />
+
+          <Info
+            label="Consignee"
+            value={viewPO.consignee_name}
+          />
+
+          <Info
+            label="Vendor"
+            value={viewPO.vendor_name}
+          />
+
+          <Info
+            label="Vendor Code"
+            value={viewPO.vendor_code || "—"}
+          />
+
+          <Info
+            label="Category"
+            value={viewPO.category}
+          />
+
+          <Info
+            label="Service"
+            value={viewPO.service_name}
+          />
+
+          <Info
+            label="Unit"
+            value={viewPO.unit || "—"}
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <TableHead>Description</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead className="text-right">
+                  Tariff
+                </TableHead>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr className="border-t border-border">
+                <TableCell>
+                  {viewPO.service_name}
+                </TableCell>
+
+                <TableCell>
+                  {viewPO.unit || "—"}
+                </TableCell>
+
+                <TableCell className="text-right">
+                  {viewPO.unit === "BL" ? (
+                    formatMoney(viewPO.tariff)
+                  ) : viewPO.unit === "Container" ? (
+                    <div className="space-y-1">
+                      {viewPO.enable_20 && (
+                        <div>
+                          20 FT:{" "}
+                          {formatMoney(
+                            viewPO.tariff_20,
+                          )}
+                        </div>
+                      )}
+
+                      {viewPO.enable_40 && (
+                        <div>
+                          40 FT:{" "}
+                          {formatMoney(
+                            viewPO.tariff_40,
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Print Purchase Order
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
@@ -582,7 +778,17 @@ function addServices(
 
   Object.entries(services).forEach(
     ([serviceName, service]) => {
-      if (!service) {
+      // Ignore legacy array-style entries: 0, 1, 2...
+      if (/^\d+$/.test(serviceName)) {
+        return;
+      }
+
+      // Ignore invalid legacy service data
+      if (
+        !service ||
+        typeof service !== "object" ||
+        !("status" in service)
+      ) {
         return;
       }
 
