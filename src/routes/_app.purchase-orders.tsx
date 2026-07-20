@@ -630,7 +630,7 @@ const eligibleVendors = useMemo(() => {
 
           {invoiceReceived
             ? "Invoice Received"
-            : "Import Invoice"}
+            : "Upload Vendor Invoice"}
         </button>
 
       </div>
