@@ -295,6 +295,47 @@ function containerNumbersToText(value: unknown): string {
   return normalizeContainerNumbers(value).join(", ");
 }
 
+export interface PurchaseOrderServiceStatus {
+  has_issued_po: boolean;
+
+  purchase_order: {
+    id: string;
+    po_number: string;
+
+    job_id: string;
+    job_number: string;
+
+    category: string;
+    service_name: string;
+
+    vendor_id: string;
+    vendor_code?: string | null;
+    vendor_name: string;
+
+    status: string;
+  } | null;
+}
+
+export interface CancelledPurchaseOrder {
+  id: string;
+  po_number: string;
+
+  job_id: string;
+  job_number: string;
+
+  category: string;
+  service_name: string;
+
+  vendor_id: string;
+  vendor_code?: string | null;
+  vendor_name: string;
+
+  status: "Cancelled";
+
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
+}
+
 export const apiClient = {
 async list<K extends EntityKey>(
   key: K,
@@ -336,6 +377,9 @@ async list<K extends EntityKey>(
     page,
     pageSize,
   };
+
+
+  
 }
 
   // ---------------- Import Jobs ----------------
@@ -913,6 +957,50 @@ async deleteTypeOfService(name: string) {
     },
   );
 },
+
+async getPurchaseOrderServiceStatus(
+  jobId: string,
+  category: string,
+  serviceName: string,
+): Promise<PurchaseOrderServiceStatus> {
+
+  const params = new URLSearchParams({
+    job_id: jobId,
+    category,
+    service_name: serviceName,
+  });
+
+  return request<PurchaseOrderServiceStatus>(
+    `/purchase-orders/service-status?${params.toString()}`,
+  );
+},
+
+
+async cancelPurchaseOrderService(
+  jobId: string,
+  category: string,
+  serviceName: string,
+  reason = "Service removed from Import Workflow",
+): Promise<CancelledPurchaseOrder> {
+
+  const params = new URLSearchParams({
+    job_id: jobId,
+    category,
+    service_name: serviceName,
+  });
+
+  return request<CancelledPurchaseOrder>(
+    `/purchase-orders/cancel-service?${params.toString()}`,
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        reason,
+      }),
+    },
+  );
+},
+
 
 };
 

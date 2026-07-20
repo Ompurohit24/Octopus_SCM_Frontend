@@ -767,16 +767,30 @@ const baseInput =
                     control={control}
                     name={f.name}
                     render={({ field: ctl }) => (
-                      <ServicesChecklist
-                        options={f.options ?? []}
-                        statusOptions={f.serviceStatusOptions ?? ["Pending", "Done"]}
-                        value={
-  ctl.value && typeof ctl.value === "object" && !Array.isArray(ctl.value)
-    ? (ctl.value as Record<string, ServiceItem>)
-    : {}
-}
-                        onChange={ctl.onChange}
-                      />
+                    <ServicesChecklist
+  options={f.options ?? []}
+  statusOptions={f.serviceStatusOptions ?? ["Pending", "Done"]}
+  value={
+    ctl.value &&
+    typeof ctl.value === "object" &&
+    !Array.isArray(ctl.value)
+      ? (ctl.value as Record<string, ServiceItem>)
+      : {}
+  }
+  onChange={ctl.onChange}
+  jobId={String(
+    watched.job_id ??
+    (defaultValues as Record<string, unknown> | undefined)?.job_id ??
+    ""
+  )}
+  category={
+    f.name === "otherGovAgencyType"
+      ? "Other Gov Agency"
+      : f.name === "otherServices"
+        ? "Other Services"
+        : ""
+  }
+/>
                     )}
                   />
                 ) : f.type === "emails" ? (
@@ -1738,265 +1752,405 @@ function ServicesChecklist({
   statusOptions,
   value,
   onChange,
+  jobId,
+  category,
 }: {
   options: string[];
   statusOptions: string[];
   value: Record<string, ServiceItem>;
   onChange: (v: Record<string, ServiceItem>) => void;
+
+  jobId: string;
+
+  category:
+    | "Other Gov Agency"
+    | "Other Services"
+    | "";
 }) {
+  const [cancelDialogOpen, setCancelDialogOpen] =
+    useState(false);
+
+  const [pendingRemoval, setPendingRemoval] =
+    useState<{
+      serviceName: string;
+      poNumber: string;
+      vendorName: string;
+    } | null>(null);
+
+  const [checkingService, setCheckingService] =
+    useState<string | null>(null);
+
+
   const updateService = (
     opt: string,
     patch: Partial<ServiceItem>,
   ) => {
     onChange({
       ...value,
+
       [opt]: {
         ...(value[opt] ?? {
-          status: statusOptions[0] ?? "Pending",
+          status:
+            statusOptions[0] ??
+            "Pending",
         }),
+
         ...patch,
       },
     });
   };
 
-  const toggle = (opt: string, checked: boolean) => {
-    if (!checked) {
-      const next = { ...value };
-      delete next[opt];
-      onChange(next);
+
+  const removeServiceFromForm = (
+    serviceName: string,
+  ) => {
+    const next = {
+      ...value,
+    };
+
+    delete next[serviceName];
+
+    onChange(next);
+  };
+
+
+  const toggle = async (
+    opt: string,
+    checked: boolean,
+  ) => {
+
+    // ---------------------------------------------
+    // CHECKING SERVICE
+    //
+    // Existing behavior remains unchanged.
+    // ---------------------------------------------
+
+    if (checked) {
+      onChange({
+        ...value,
+
+        [opt]: {
+          status:
+            statusOptions[0] ??
+            "Pending",
+
+          unit: undefined,
+
+          tariff: undefined,
+
+          tariff20: undefined,
+
+          tariff40: undefined,
+
+          enable20: false,
+
+          enable40: false,
+        },
+      });
+
       return;
     }
 
- onChange({
-  ...value,
-  [opt]: {
-    status: statusOptions[0] ?? "Pending",
-    unit: undefined,
-    tariff: undefined,
-    tariff20: undefined,
-    tariff40: undefined,
-    enable20: false,
-    enable40: false,
-  },
-});
+
+    // ---------------------------------------------
+    // UNCLEAR PO CONTEXT
+    //
+    // If this is not a PO-enabled workflow field,
+    // preserve the original uncheck behavior.
+    // ---------------------------------------------
+
+    if (
+      !jobId ||
+      !category
+    ) {
+      removeServiceFromForm(
+        opt,
+      );
+
+      return;
+    }
+
+
+    // ---------------------------------------------
+    // CHECK WHETHER AN ISSUED PO EXISTS
+    //
+    // IMPORTANT:
+    //
+    // Do NOT remove the checkbox yet.
+    // ---------------------------------------------
+
+    try {
+      setCheckingService(
+        opt,
+      );
+
+      const result =
+        await apiClient.getPurchaseOrderServiceStatus(
+          jobId,
+          category,
+          opt,
+        );
+
+
+      // -------------------------------------------
+      // NO ISSUED PO
+      //
+      // Safe to uncheck normally.
+      // -------------------------------------------
+
+      if (
+        !result.has_issued_po ||
+        !result.purchase_order
+      ) {
+        removeServiceFromForm(
+          opt,
+        );
+
+        return;
+      }
+
+
+      // -------------------------------------------
+      // ISSUED PO FOUND
+      //
+      // Keep checkbox checked and ask user.
+      // -------------------------------------------
+
+      setPendingRemoval({
+        serviceName: opt,
+
+        poNumber:
+          result.purchase_order.po_number,
+
+        vendorName:
+          result.purchase_order.vendor_name,
+      });
+
+      setCancelDialogOpen(
+        true,
+      );
+
+    } catch (error) {
+
+      // IMPORTANT:
+      //
+      // If PO verification fails,
+      // DO NOT remove the service.
+      //
+      // Otherwise a network/backend failure could
+      // bypass the PO cancellation protection.
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to verify Purchase Order status.",
+      );
+
+    } finally {
+
+      setCheckingService(
+        null,
+      );
+    }
   };
 
+
   return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <div className="space-y-3">
-        {options.map((opt) => {
-          const service = value[opt];
-          const checked = !!service;
-          const status = service?.status ?? "Pending";
+    <>
+      <div className="rounded-lg border border-border bg-background p-3">
 
-          return (
-            <div
-              key={opt}
-              className={`rounded-lg border p-3 ${
-                checked && status === "Done"
-                  ? "border-green-500 bg-green-50"
-                  : "border-gray-300"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) =>
-                    toggle(opt, e.target.checked)
-                  }
-                  className="size-4"
-                />
+        <div className="space-y-3">
 
-                <span className="font-medium">{opt}</span>
-              </div>
+          {options.map((opt) => {
 
-              {checked && (
-                <div className="mt-3 space-y-3 border-t pt-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">
-                      Job Status
-                    </label>
+            const service =
+              value[opt];
 
-                    <select
-                      value={status}
-                      onChange={(e) =>
-                        updateService(opt, {
-                          status: e.target.value,
-                        })
-                      }
-                      className="h-9 w-full rounded-md border px-2"
-                    >
-                      {statusOptions.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            const checked =
+              !!service;
 
-             {status === "Done" && (
-  <>
-    {/* Tariff Unit FIRST */}
-    <div>
-      <label className="mb-1 block text-xs font-medium">
-        Tariff Unit
-      </label>
+            const status =
+              service?.status ??
+              "Pending";
 
-      <select
-        value={service?.unit ?? ""}
-        onChange={(e) => {
-          const unit = e.target.value || undefined;
+            return (
+              <div
+                key={opt}
+                className={`rounded-lg border p-3 ${
+                  checked &&
+                  status === "Done"
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-300"
+                }`}
+              >
 
-         updateService(opt, {
-  unit,
-  tariff: undefined,
-  tariff20: undefined,
-  tariff40: undefined,
-  enable20: false,
-  enable40: false,
-});
-        }}
-        className="h-9 w-full rounded-md border px-2"
-      >
-        <option value="">Select</option>
-        <option value="Container">Container</option>
-        <option value="BL">BL</option>
-      </select>
-    </div>
+                <div className="flex items-center gap-2">
 
-    {/* Container selected -> separate 20 & 40 inputs */}
+                  <input
+                    type="checkbox"
 
+                    checked={
+                      checked
+                    }
 
-   {service?.unit === "Container" && (
-  <div className="space-y-3">
-<label className="mb-1 block text-xs font-medium">
-  Container Size
-</label>
+                    disabled={
+                      checkingService ===
+                      opt
+                    }
 
-<div className="flex gap-6">
-      {/* 20 FT */}
-      <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
-        <input
-          type="checkbox"
-          checked={!!service?.enable20}
-          onChange={(e) =>
-            updateService(opt, {
-              enable20: e.target.checked,
-              tariff20: e.target.checked
-                ? service?.tariff20
-                : undefined,
-            })
-          }
-          className="h-5 w-5"
-        />
-        20 FT
-      </label>
+                    onChange={(e) => {
+                      void toggle(
+                        opt,
+                        e.target.checked,
+                      );
+                    }}
 
-      {/* 40 FT */}
-      <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
-        <input
-          type="checkbox"
-          checked={!!service?.enable40}
-          onChange={(e) =>
-            updateService(opt, {
-              enable40: e.target.checked,
-              tariff40: e.target.checked
-                ? service?.tariff40
-                : undefined,
-            })
-          }
-          className="h-5 w-5"
-        />
-        40 FT
-      </label>
-    </div>
+                    className="size-4"
+                  />
 
-    {/* 20 Tariff */}
-    {service?.enable20 && (
-      <div>
-        <label className="mb-1 block text-sm font-semibold">
-          20 FT Tariff Amount
-        </label>
+                  <span className="font-medium">
+                    {opt}
+                  </span>
 
-        <input
-          type="number"
-          value={service?.tariff20 ?? ""}
-          onChange={(e) =>
-            updateService(opt, {
-              tariff20:
-                e.target.value === ""
-                  ? undefined
-                  : Number(e.target.value),
-            })
-          }
-          placeholder="Enter 20 Tariff"
-          className="h-9 w-full rounded-md border px-2"
-        />
-      </div>
-    )}
+                  {checkingService === opt && (
+                    <span className="text-xs text-muted-foreground">
+                      Checking PO…
+                    </span>
+                  )}
 
-    {/* 40 Tariff */}
-    {service?.enable40 && (
-      <div>
-        <label className="mb-1 block text-sm font-semibold">
-          40 FT Tariff Amount
-        </label>
-
-        <input
-          type="number"
-          value={service?.tariff40 ?? ""}
-          onChange={(e) =>
-            updateService(opt, {
-              tariff40:
-                e.target.value === ""
-                  ? undefined
-                  : Number(e.target.value),
-            })
-          }
-          placeholder="Enter 40 Tariff"
-          className="h-9 w-full rounded-md border px-2"
-        />
-      </div>
-    )}
-  </div>
-)}
-
-{/* BL selected -> single tariff input */}
-{service?.unit === "BL" && (
-  <div>
-    <label className="mb-1 block text-xs font-medium">
-      Tariff Amount
-    </label>
-
-    <input
-      type="number"
-      value={service?.tariff ?? ""}
-      onChange={(e) =>
-        updateService(opt, {
-          tariff:
-            e.target.value === ""
-              ? undefined
-              : Number(e.target.value),
-        })
-      }
-      placeholder="Enter Tariff Amount"
-      className="h-9 w-full rounded-md border px-2"
-    />
-  </div>
-)}
-                  </>
-                )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+
+                {checked && (
+
+                  // =====================================
+                  // KEEP YOUR CURRENT EXISTING CONTENT
+                  // FROM HERE:
+                  //
+                  // <div className="mt-3 ...">
+                  //   Job Status
+                  //   Tariff Unit
+                  //   Container 20/40
+                  //   Tariff Amount
+                  //   ...
+                  // </div>
+                  //
+                  // DO NOT CHANGE THAT CODE.
+                  // =====================================
+
+                  <div className="mt-3 space-y-3 border-t pt-3">
+
+                    {/* KEEP YOUR EXISTING SERVICE FIELDS HERE */}
+
+                  </div>
+                )}
+
+              </div>
+            );
+          })}
+
+        </div>
+
       </div>
-    </div>
+
+
+      <ConfirmDialog
+        open={
+          cancelDialogOpen
+        }
+
+        onOpenChange={(open) => {
+
+          setCancelDialogOpen(
+            open,
+          );
+
+          if (!open) {
+            setPendingRemoval(
+              null,
+            );
+          }
+        }}
+
+        title="Cancel Assigned Service?"
+
+        description={
+          pendingRemoval
+            ? `${pendingRemoval.serviceName} is already assigned to vendor ${pendingRemoval.vendorName} under ${pendingRemoval.poNumber}. Are you sure you want to cancel this service? The Purchase Order will be cancelled and the vendor will be notified by email.`
+            : ""
+        }
+
+        confirmLabel="Cancel Service"
+
+        destructive
+
+        onConfirm={async () => {
+
+          if (
+            !pendingRemoval
+          ) {
+            return;
+          }
+
+          const serviceName =
+            pendingRemoval.serviceName;
+
+          try {
+
+            // -----------------------------------------
+            // CANCEL PO FIRST
+            // -----------------------------------------
+
+            await apiClient.cancelPurchaseOrderService(
+              jobId,
+              category,
+              serviceName,
+              "Service removed from Import Workflow",
+            );
+
+
+            // -----------------------------------------
+            // ONLY AFTER BACKEND SUCCESS:
+            //
+            // Remove checkbox/service from form.
+            // -----------------------------------------
+
+            removeServiceFromForm(
+              serviceName,
+            );
+
+
+            setCancelDialogOpen(
+              false,
+            );
+
+            setPendingRemoval(
+              null,
+            );
+
+
+            toast.success(
+              `${serviceName} cancelled successfully. Purchase Order cancelled and vendor notification queued.`,
+            );
+
+          } catch (error) {
+
+            // Keep checkbox checked if cancellation fails.
+
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Unable to cancel Purchase Order.",
+            );
+
+            throw error;
+          }
+        }}
+      />
+
+    </>
   );
-}
-           
+}        
        
     
   
