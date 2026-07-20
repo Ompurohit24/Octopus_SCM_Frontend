@@ -104,10 +104,12 @@ function buildDefaults<T>(fields: FieldDef[], initial?: Partial<T>): Record<stri
     } else if (f.type === "switch") {
       out[f.name] = false;
     } else if (f.type === "services") {
-      out[f.name] = {};
-    } else {
-      out[f.name] = "";
-    }
+  out[f.name] = {};
+} else if (f.type === "emails") {
+  out[f.name] = [""];
+} else {
+  out[f.name] = "";
+}
   }
   return out;
 }
@@ -287,16 +289,33 @@ const submit = handleSubmit(async (raw) => {
   continue;
 }
 
-    if (f.type === "number") {
-      cleaned[f.name] =
-        v === "" || v === null || v === undefined
-          ? undefined
-          : Number(v);
-    } else if (f.type === "switch") {
-      cleaned[f.name] = Boolean(v);
-    } else {
-      cleaned[f.name] = v;
-    }
+   if (f.type === "number") {
+  cleaned[f.name] =
+    v === "" || v === null || v === undefined
+      ? undefined
+      : Number(v);
+} else if (f.type === "switch") {
+  cleaned[f.name] = Boolean(v);
+} else if (f.type === "emails") {
+  const emails = Array.isArray(v)
+    ? v
+        .map((email) => String(email ?? "").trim())
+        .filter(Boolean)
+    : typeof v === "string" && v.trim()
+      ? [v.trim()]
+      : [];
+
+  cleaned[f.name] = Array.from(
+    new Map(
+      emails.map((email) => [
+        email.toLowerCase(),
+        email,
+      ]),
+    ).values(),
+  );
+} else {
+  cleaned[f.name] = v;
+}
   }
 
 let saved;
@@ -370,6 +389,45 @@ if (serviceError) {
   return;
 }
 
+
+const emailField = fields.find(
+  (field) => field.type === "emails",
+);
+
+if (emailField) {
+  const emails = cleaned[emailField.name];
+
+  if (
+    emailField.required &&
+    (!Array.isArray(emails) || emails.length === 0)
+  ) {
+    setErrorTitle("Validation Error");
+    setErrorMessage(
+      `${emailField.label} is required.`,
+    );
+    setErrorDialog(true);
+    return;
+  }
+
+  if (Array.isArray(emails)) {
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const invalidEmail = emails.find(
+      (email) =>
+        !emailPattern.test(String(email)),
+    );
+
+    if (invalidEmail) {
+      setErrorTitle("Validation Error");
+      setErrorMessage(
+        `Invalid email: ${invalidEmail}`,
+      );
+      setErrorDialog(true);
+      return;
+    }
+  }
+}
 
 try {
   console.log(
@@ -721,69 +779,172 @@ const baseInput =
                       />
                     )}
                   />
-                ) : f.name === "jobNo" && title === "Update Job" ? (
-                   <SearchableJobSelect
+                ) : f.type === "emails" ? (
+  <Controller
+    control={control}
+    name={f.name}
+    render={({ field: ctl }) => {
+      // Supports both:
+      // Old customer: email = "abc@gmail.com"
+      // New customer: email = ["abc@gmail.com", "accounts@gmail.com"]
+      const emails = Array.isArray(ctl.value)
+        ? ctl.value.map((value) => String(value ?? ""))
+        : typeof ctl.value === "string" && ctl.value.trim()
+          ? [ctl.value]
+          : [""];
+
+      const updateEmail = (
+        index: number,
+        value: string,
+      ) => {
+        const next = [...emails];
+        next[index] = value;
+
+        ctl.onChange(next);
+      };
+
+      const addEmail = () => {
+        ctl.onChange([...emails, ""]);
+      };
+
+      const removeEmail = (index: number) => {
+        const next = emails.filter(
+          (_, currentIndex) => currentIndex !== index,
+        );
+
+        // Always keep at least one email input.
+        ctl.onChange(
+          next.length > 0 ? next : [""],
+        );
+      };
+
+      return (
+        <div className="space-y-2">
+          {emails.map((email, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(e) =>
+                  updateEmail(
+                    index,
+                    e.target.value,
+                  )
+                }
+                placeholder={
+                  index === 0
+                    ? "Enter email ID"
+                    : "Enter additional email ID"
+                }
+                readOnly={f.readOnly}
+                className={baseInput}
+              />
+
+              {emails.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    removeEmail(index)
+                  }
+                  disabled={f.readOnly}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Remove email"
+                  aria-label={`Remove email ${index + 1}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+
+          {!f.readOnly && (
+            <button
+              type="button"
+              onClick={addEmail}
+              className="text-[11px] font-medium text-brand hover:underline"
+            >
+              + Add Email
+            </button>
+          )}
+        </div>
+      );
+    }}
+  />
+
+) : f.name === "jobNo" && title === "Update Job" ? (
+  <SearchableJobSelect
     field={f}
     className={baseInput}
     control={control}
     locked={!!f.readOnly}
   />
-  ) : f.type === "select" ? (
+
+) : f.type === "select" ? (
   <DynamicSelect
-  field={f}
-  className={baseInput}
-  locked={!!f.readOnly}
-  register={register(f.name, {
-    required: f.required ? `${f.label} is required` : false,
-  })}
-  setErrorDialog={setErrorDialog}
-  setErrorMessage={setErrorMessage}
-  setErrorTitle={setErrorTitle}
-/>
-                ) : f.type === "textarea" ? (
-                  <textarea
-                    placeholder={f.placeholder}
-                    rows={2}
-                    // readOnly={f.readOnly} 
-                    // readOnly={f.readOnly || isWorkflowFieldLocked(f.name)}
-                    readOnly={f.readOnly}
-                    className={`${baseInput} h-auto py-2`}
-                    {...register(f.name, {
-                      required: f.required ? `${f.label} is required` : false,
-                    })}
-                  />
-                ) : f.type === "switch" ? (
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      disabled={f.readOnly}
-                      className="size-4 rounded border-border accent-brand"
-                      {...register(f.name)}
-                    />
-                    <span className="text-muted-foreground">Enable</span>
-                  </label>
-                ) : f.type === "file" ? (
-
-  <div className="space-y-2">
-  <input
-    type="file"
-    accept=".pdf,.jpg,.jpeg,.png"
+    field={f}
     className={baseInput}
-    onChange={(e) => {
-      const file = e.target.files?.[0];
-
-      if (file) {
-        setValue(f.name, file);
-      }
-    }}
+    locked={!!f.readOnly}
+    register={register(f.name, {
+      required: f.required
+        ? `${f.label} is required`
+        : false,
+    })}
+    setErrorDialog={setErrorDialog}
+    setErrorMessage={setErrorMessage}
+    setErrorTitle={setErrorTitle}
   />
 
-  {watch(f.name) instanceof File && (
-    <p className="text-xs text-muted-foreground">
-      Selected: {(watch(f.name) as File).name}
-    </p>
-  )}
-</div>
+) : f.type === "textarea" ? (
+  <textarea
+    placeholder={f.placeholder}
+    rows={2}
+    readOnly={f.readOnly}
+    className={`${baseInput} h-auto py-2`}
+    {...register(f.name, {
+      required: f.required
+        ? `${f.label} is required`
+        : false,
+    })}
+  />
+
+) : f.type === "switch" ? (
+  <label className="inline-flex items-center gap-2 text-sm">
+    <input
+      type="checkbox"
+      disabled={f.readOnly}
+      className="size-4 rounded border-border accent-brand"
+      {...register(f.name)}
+    />
+
+    <span className="text-muted-foreground">
+      Enable
+    </span>
+  </label>
+
+) : f.type === "file" ? (
+  <div className="space-y-2">
+    <input
+      type="file"
+      accept=".pdf,.jpg,.jpeg,.png"
+      className={baseInput}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+
+        if (file) {
+          setValue(f.name, file);
+        }
+      }}
+    />
+
+    {watch(f.name) instanceof File && (
+      <p className="text-xs text-muted-foreground">
+        Selected: {(watch(f.name) as File).name}
+      </p>
+    )}
+  </div>
 
 ) : (
            <div className="relative">

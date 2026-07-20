@@ -557,7 +557,18 @@ if (key === "importChecklists") {
   formData.append("customer_code", input.customer_code ?? "");
   formData.append("customer_name", input.customer_name ?? "");
   formData.append("address", input.address ?? "");
-  formData.append("email", input.email ?? "");
+  const customerEmails = Array.isArray(input.email)
+  ? input.email
+      .map((email: unknown) => String(email ?? "").trim())
+      .filter(Boolean)
+  : input.email
+    ? [String(input.email).trim()]
+    : [];
+
+formData.append(
+  "email",
+  JSON.stringify(customerEmails),
+);
 
   formData.append("countryCode", input.countryCode ?? "+91");
   formData.append("phone", input.phone ?? "");

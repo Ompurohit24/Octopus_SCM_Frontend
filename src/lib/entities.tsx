@@ -14,6 +14,7 @@ export type FieldType =
   | "textarea"
   | "switch"
   | "services"
+  | "emails"
   | "file";
 
 export interface FieldDef {
@@ -129,7 +130,20 @@ export const customersConfig: EntityConfig<"customers"> = {
     render: (row) => row.address ?? "-",
   },
 
-  { key: "email", label: "Email", sortable: true },
+  {
+  key: "email",
+  label: "Email",
+  sortable: true,
+  render: (row) => {
+    const emails = row.email;
+
+    if (Array.isArray(emails)) {
+      return emails.join(", ");
+    }
+
+    return emails || "-";
+  },
+},
   { key: "phone", label: "Phone" },
   { key: "gstin", label: "GSTIN" },
   { key: "pan", label: "PAN" },
@@ -245,12 +259,11 @@ fields: [
     colSpan: 3,
   },
   {
-    name: "email",
-    label: "Email",
-    type: "text",
-    required: true,
-    email: true,
-  },
+  name: "email",
+  label: "Email",
+  type: "emails",
+  required: true,
+},
   {
   name: "countryCode",
   label: "Country Code",
@@ -387,12 +400,11 @@ export const vendorsConfig: EntityConfig<"vendors"> = {
       required: true,
     },
     {
-      name: "email",
-      label: "Email ID",
-      type: "text",
-      email: true,
-      required: true,
-    },
+  name: "email",
+  label: "Email ID",
+  type: "emails",
+  required: true,
+},
     {
       name: "countryCode",
       label: "Country Code",

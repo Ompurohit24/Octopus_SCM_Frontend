@@ -48,7 +48,7 @@ export interface Customer {
 
   address: string;
 
-  email: string;
+  email: string[];
   countryCode: string;
   phone: string;
 
@@ -74,7 +74,7 @@ export interface Vendor {
 
   address: string;
 
-  email: string;
+  email: string[];
   countryCode: string;
   phone: string;
 
@@ -420,6 +420,11 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface PurchaseOrderContainer {
+  container_number: string;
+  size: string;
+}
+
 export interface PurchaseOrder {
   id: ID;
 
@@ -429,6 +434,14 @@ export interface PurchaseOrder {
   job_number: string;
 
   consignee_name: string;
+
+  // Snapshot values stored permanently in PO.
+  bl_no: string;
+  be_no: string;
+  cfs_name: string;
+
+  // Only containers selected while creating this PO.
+  containers: PurchaseOrderContainer[];
 
   category:
     | "Other Gov Agency"
@@ -446,6 +459,7 @@ export interface PurchaseOrder {
 
   tariff?: number;
 
+  // Legacy fields kept for existing POs.
   tariff_20?: number;
   tariff_40?: number;
 

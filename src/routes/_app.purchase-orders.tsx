@@ -23,9 +23,24 @@ type PurchaseOrderServiceRow = {
   id: string;
   jobId: string;
   jobNo: string;
+
   consigneeName: string;
-  category: "Other Gov Agency" | "Other Services";
+
+  blNo: string;
+  beNo: string;
+  cfsName: string;
+
+  containers: {
+  containerNumber: string;
+  size: string;
+}[];
+
+  category:
+    | "Other Gov Agency"
+    | "Other Services";
+
   serviceName: string;
+
   status: string;
   unit: string;
 
@@ -49,8 +64,17 @@ function PurchaseOrdersRoute() {
   const [removePORow, setRemovePORow] =
   useState<PurchaseOrderServiceRow | null>(null);
 
-const [selectedVendorId, setSelectedVendorId] =
+   const [selectedVendorId, setSelectedVendorId] =
+    useState("");
+
+  const [selectedContainerNumbers, setSelectedContainerNumbers] =
+  useState<string[]>([]);
+
+const [poTariff, setPoTariff] =
   useState("");
+
+const [poTariffUnit, setPoTariffUnit] =
+  useState<"BL" | "Container" | "">("");
 
 const { data: vendors = [] } =
   useEntityAll("vendors");
@@ -122,27 +146,66 @@ const createPurchaseOrder =
         wf.job_id ??
         "";
 
-      const consigneeName =
-        job?.consigneeName ??
-        "";
+        const consigneeName =
+  job?.consigneeName ??
+  "";
+
+      const blNo =
+  job?.blNo ??
+  "";
+
+const beNo =
+  wf.be_no ??
+  job?.beNo ??
+  "";
+
+const cfsName =
+  wf.cfs_name ??
+  "";
+
+const containerNumbers = String(
+  job?.containerNumbers ?? "",
+)
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+
+const containerSize = String(
+  job?.size ?? "",
+).trim();
+
+const containers = containerNumbers.map(
+  (containerNumber) => ({
+    containerNumber,
+    size: containerSize,
+  }),
+);
 
       addServices(
-        result,
-        wf.otherGovAgencyType,
-        "Other Gov Agency",
-        String(jobId),
-        String(jobNo),
-        consigneeName,
-      );
+  result,
+  wf.otherGovAgencyType,
+  "Other Gov Agency",
+  String(jobId),
+  String(jobNo),
+  consigneeName,
+  blNo,
+  beNo,
+  cfsName,
+containers,
+);
 
-      addServices(
-        result,
-        wf.otherServices,
-        "Other Services",
-        String(jobId),
-        String(jobNo),
-        consigneeName,
-      );
+    addServices(
+  result,
+  wf.otherServices,
+  "Other Services",
+  String(jobId),
+  String(jobNo),
+  consigneeName,
+  blNo,
+  beNo,
+  cfsName,
+containers,
+);
     });
 
     return result;
@@ -408,12 +471,33 @@ const eligibleVendors = useMemo(() => {
 ) : (
   <button
     type="button"
-    disabled={row.status !== "Done"}
     onClick={() => {
-      setSelectedRow(row);
-      setSelectedVendorId("");
-    }}
-    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+  setSelectedRow(row);
+  setSelectedVendorId("");
+setSelectedContainerNumbers(
+  row.containers.map(
+    (container) =>
+      container.containerNumber,
+  ),
+);
+  setPoTariffUnit(
+    row.unit === "BL" ||
+    row.unit === "Container"
+      ? row.unit
+      : "",
+  );
+
+  if (row.unit === "BL") {
+    setPoTariff(
+      row.tariff !== undefined
+        ? String(row.tariff)
+        : "",
+    );
+  } else {
+    setPoTariff("");
+  }
+}}
+    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95"
   >
     Create PO
   </button>
@@ -453,46 +537,166 @@ const eligibleVendors = useMemo(() => {
             </h2>
 
             <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl border border-border bg-muted/30 p-4 text-sm">
-              <Info
-                label="Job No"
-                value={selectedRow.jobNo}
-              />
 
-              <Info
-                label="Consignee"
-                value={selectedRow.consigneeName}
-              />
+  <Info
+    label="Job No"
+    value={selectedRow.jobNo}
+  />
 
-              <Info
-                label="Category"
-                value={selectedRow.category}
-              />
+  <Info
+    label="Consignee"
+    value={selectedRow.consigneeName}
+  />
 
-              <Info
-                label="Service"
-                value={selectedRow.serviceName}
-              />
+  <Info
+    label="BL No"
+    value={selectedRow.blNo}
+  />
 
-              <Info
-                label="Job Status"
-                value={selectedRow.status}
-              />
+  <Info
+    label="BE No"
+    value={selectedRow.beNo}
+  />
 
-              <Info
-                label="Tariff Unit"
-                value={selectedRow.unit || "—"}
-              />
+  <Info
+    label="CFS Name"
+    value={selectedRow.cfsName}
+  />
 
-              <div className="col-span-2">
-                <p className="text-xs text-muted-foreground">
-                  Tariff
-                </p>
+<div className="col-span-2">
+  <p className="text-xs text-muted-foreground">
+    Container Number
+  </p>
 
-                <div className="mt-1">
-                  <TariffDisplay row={selectedRow} />
-                </div>
+  {selectedRow.containers.length > 0 ? (
+    <div className="mt-2 space-y-2">
+      {selectedRow.containers.map(
+        (container) => {
+          const checked =
+            selectedContainerNumbers.includes(
+              container.containerNumber,
+            );
+
+          return (
+            <label
+              key={container.containerNumber}
+              className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-background px-3 py-2"
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setSelectedContainerNumbers(
+                        (current) => [
+                          ...current,
+                          container.containerNumber,
+                        ],
+                      );
+                    } else {
+                      setSelectedContainerNumbers(
+                        (current) =>
+                          current.filter(
+                            (number) =>
+                              number !==
+                              container.containerNumber,
+                          ),
+                      );
+                    }
+                  }}
+                  className="size-4 rounded border-border accent-primary"
+                />
+
+                <span className="font-medium">
+                  {container.containerNumber}
+                </span>
               </div>
-            </div>
+
+              <span className="text-xs font-medium text-muted-foreground">
+                {container.size || "—"}
+              </span>
+            </label>
+          );
+        },
+      )}
+    </div>
+  ) : (
+    <p className="mt-1 font-medium">
+      —
+    </p>
+  )}
+</div>
+
+  <Info
+    label="Category"
+    value={selectedRow.category}
+  />
+
+  <div className="col-span-2">
+    <Info
+      label="Service"
+      value={selectedRow.serviceName}
+    />
+  </div>
+
+</div>
+
+
+<div className="mt-5 grid grid-cols-2 gap-4">
+
+  <div>
+    <label className="mb-1.5 block text-xs font-medium">
+      Tariff Unit{" "}
+      <span className="text-destructive">*</span>
+    </label>
+
+    <select
+      value={poTariffUnit}
+      onChange={(event) =>
+        setPoTariffUnit(
+          event.target.value as
+            | "BL"
+            | "Container"
+            | "",
+        )
+      }
+      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+    >
+      <option value="">
+        Select Tariff Unit...
+      </option>
+
+      <option value="BL">
+        BL
+      </option>
+
+      <option value="Container">
+        Container
+      </option>
+    </select>
+  </div>
+
+  <div>
+    <label className="mb-1.5 block text-xs font-medium">
+      Tariff Amount{" "}
+      <span className="text-destructive">*</span>
+    </label>
+
+    <input
+      type="number"
+      min="0"
+      step="0.01"
+      value={poTariff}
+      onChange={(event) =>
+        setPoTariff(event.target.value)
+      }
+      placeholder="Enter tariff amount"
+      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+    />
+  </div>
+
+</div>
 
             {/* Vendor */}
             <div className="mt-5">
@@ -549,10 +753,17 @@ const eligibleVendors = useMemo(() => {
 
               <button
                 type="button"
-                disabled={
-                  !selectedVendorId ||
-                  createPurchaseOrder.isPending
-                }
+               disabled={
+  !selectedVendorId ||
+  !poTariffUnit ||
+  !poTariff ||
+  Number(poTariff) < 0 ||
+  (
+    poTariffUnit === "Container" &&
+    selectedContainerNumbers.length === 0
+  ) ||
+  createPurchaseOrder.isPending
+}
                 onClick={async () => {
                   const vendor = vendors.find(
                     (item) =>
@@ -567,49 +778,78 @@ const eligibleVendors = useMemo(() => {
                   }
 
                   try {
-                    await createPurchaseOrder.mutateAsync({
-                      job_id: selectedRow.jobId,
-                      job_number: selectedRow.jobNo,
+                await createPurchaseOrder.mutateAsync({
+  job_id:
+    selectedRow.jobId,
 
-                      consignee_name:
-                        selectedRow.consigneeName,
+  job_number:
+    selectedRow.jobNo,
 
-                      category:
-                        selectedRow.category,
+  consignee_name:
+    selectedRow.consigneeName,
 
-                      service_name:
-                        selectedRow.serviceName,
+  bl_no:
+    selectedRow.blNo,
 
-                      vendor_id: vendor.id,
-                      vendor_code:
-                        vendor.vendor_code,
-                      vendor_name:
-                        vendor.vendor_name,
+  be_no:
+    selectedRow.beNo,
 
-                      service_status:
-                        selectedRow.status,
+  cfs_name:
+    selectedRow.cfsName,
 
-                      unit:
-                        selectedRow.unit === "Container" ||
-                        selectedRow.unit === "BL"
-                          ? selectedRow.unit
-                          : undefined,
+  containers:
+    selectedRow.containers
+      .filter((container) =>
+        selectedContainerNumbers.includes(
+          container.containerNumber,
+        ),
+      )
+      .map((container) => ({
+        container_number:
+          container.containerNumber,
 
-                      tariff:
-                        selectedRow.tariff,
+        size:
+          container.size,
+      })),
 
-                      tariff_20:
-                        selectedRow.tariff20,
+  category:
+    selectedRow.category,
 
-                      tariff_40:
-                        selectedRow.tariff40,
+  service_name:
+    selectedRow.serviceName,
 
-                      enable_20:
-                        selectedRow.enable20,
+  vendor_id:
+    vendor.id,
 
-                      enable_40:
-                        selectedRow.enable40,
-                    });
+  vendor_code:
+    vendor.vendor_code,
+
+  vendor_name:
+    vendor.vendor_name,
+
+  service_status:
+    selectedRow.status,
+
+  unit:
+    poTariffUnit || undefined,
+
+  tariff:
+    poTariff
+      ? Number(poTariff)
+      : undefined,
+
+  tariff_20:
+    undefined,
+
+  tariff_40:
+    undefined,
+
+  enable_20:
+    false,
+
+  enable_40:
+    false,
+});
 
                     setSelectedRow(null);
                     setSelectedVendorId("");
@@ -848,6 +1088,13 @@ function addServices(
   jobId: string,
   jobNo: string,
   consigneeName: string,
+  blNo: string,
+  beNo: string,
+  cfsName: string,
+  containers: {
+    containerNumber: string;
+    size: string;
+  }[],
 ) {
   if (!services) {
     return;
@@ -879,6 +1126,11 @@ function addServices(
         jobId,
         jobNo,
         consigneeName,
+
+        blNo,
+beNo,
+cfsName,
+containers,
 
         category,
         serviceName,
