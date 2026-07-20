@@ -46,6 +46,9 @@ function PurchaseOrdersRoute() {
   const [viewPO, setViewPO] =
   useState<PurchaseOrder | null>(null);
 
+  const [removePORow, setRemovePORow] =
+  useState<PurchaseOrderServiceRow | null>(null);
+
 const [selectedVendorId, setSelectedVendorId] =
   useState("");
 
@@ -379,19 +382,29 @@ const eligibleVendors = useMemo(() => {
 
                     <TableCell className="text-right">
  {getExistingPO(row) ? (
-  <button
-  type="button"
-  onClick={() => {
-    const po = getExistingPO(row);
+  <div className="flex items-center justify-end gap-2">
+    <button
+      type="button"
+      onClick={() => {
+        const po = getExistingPO(row);
 
-    if (po) {
-      setViewPO(po);
-    }
-  }}
-  className="inline-flex rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-colors hover:bg-green-200"
->
-  {getExistingPO(row)?.po_number}
-</button>
+        if (po) {
+          setViewPO(po);
+        }
+      }}
+      className="inline-flex rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-colors hover:bg-green-200"
+    >
+      {getExistingPO(row)?.po_number}
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setRemovePORow(row)}
+      className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+    >
+      Delete
+    </button>
+  </div>
 ) : (
   <button
     type="button"
@@ -759,6 +772,70 @@ const eligibleVendors = useMemo(() => {
     </div>
   </div>
 )}
+
+{removePORow && (
+  <div
+    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+    onClick={() => setRemovePORow(null)}
+  >
+    <div
+      className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <h2 className="text-lg font-semibold">
+        Remove Purchase Order Service
+      </h2>
+
+      <p className="mt-3 text-sm text-muted-foreground">
+        This service cannot be deleted directly from Purchase Orders.
+      </p>
+
+      <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
+        <Info
+          label="Job No"
+          value={removePORow.jobNo}
+        />
+
+        <div className="mt-3">
+          <Info
+            label="Service"
+            value={removePORow.serviceName}
+          />
+        </div>
+
+        <div className="mt-3">
+          <Info
+            label="Category"
+            value={removePORow.category}
+          />
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm">
+        To remove this service from the Purchase Order list,
+        go to <strong>Update Job</strong>, select job{" "}
+        <strong>{removePORow.jobNo}</strong>, and remove/uncheck{" "}
+        <strong>{removePORow.serviceName}</strong>.
+      </p>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Save the Update Job after removing the service. It will then
+        disappear automatically from the Purchase Order list.
+      </p>
+
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setRemovePORow(null)}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
+          OK, Got It
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
     </div>
   );
