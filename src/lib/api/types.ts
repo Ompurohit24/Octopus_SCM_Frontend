@@ -473,6 +473,18 @@ export interface PurchaseOrder {
 
   created_at: string;
   updated_at: string;
+
+
+  invoice_status?: "Pending" | "Received";
+
+invoice_file_path?: string | null;
+invoice_original_name?: string | null;
+invoice_content_type?: string | null;
+
+invoice_received_at?: string | null;
+
+last_invoice_reminder_at?: string | null;
+invoice_reminder_count?: number;
 }
 
 export type EntityMap = {

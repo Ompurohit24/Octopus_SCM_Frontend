@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ClipboardList, Search } from "lucide-react";
+import {
+  ClipboardList,
+  Search,
+  Upload,
+} from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api/storage";
+
 
 import { useCreateEntity, useEntityAll } from "@/lib/api/hooks";
 import type {
@@ -61,6 +68,16 @@ function PurchaseOrdersRoute() {
   const [viewPO, setViewPO] =
   useState<PurchaseOrder | null>(null);
 
+
+  const [invoicePO, setInvoicePO] =
+  useState<PurchaseOrder | null>(null);
+
+const [invoiceFile, setInvoiceFile] =
+  useState<File | null>(null);
+
+const [invoiceUploading, setInvoiceUploading] =
+  useState(false);
+
   const [removePORow, setRemovePORow] =
   useState<PurchaseOrderServiceRow | null>(null);
 
@@ -78,6 +95,8 @@ const [poTariffUnit, setPoTariffUnit] =
 
 const { data: vendors = [] } =
   useEntityAll("vendors");
+
+const queryClient = useQueryClient();
 
 const { data: purchaseOrders = [] } =
   useEntityAll("purchaseOrders");
@@ -444,65 +463,180 @@ const eligibleVendors = useMemo(() => {
 </TableCell>
 
                     <TableCell className="text-right">
- {getExistingPO(row) ? (
-  <div className="flex items-center justify-end gap-2">
-    <button
-      type="button"
-      onClick={() => {
-        const po = getExistingPO(row);
+  {(() => {
+    const existingPO =
+      getExistingPO(row);
 
-        if (po) {
-          setViewPO(po);
-        }
-      }}
-      className="inline-flex rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-colors hover:bg-green-200"
-    >
-      {getExistingPO(row)?.po_number}
-    </button>
+    const invoiceReceived =
+      existingPO?.invoice_status ===
+      "Received";
 
-    <button
-      type="button"
-      onClick={() => setRemovePORow(row)}
-      className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-    >
-      Delete
-    </button>
-  </div>
-) : (
-  <button
-    type="button"
-    onClick={() => {
-  setSelectedRow(row);
-  setSelectedVendorId("");
-setSelectedContainerNumbers(
-  row.containers.map(
-    (container) =>
-      container.containerNumber,
-  ),
-);
-  setPoTariffUnit(
-    row.unit === "BL" ||
-    row.unit === "Container"
-      ? row.unit
-      : "",
-  );
+    const canImportInvoice =
+      existingPO?.status ===
+      "Issued";
 
-  if (row.unit === "BL") {
-    setPoTariff(
-      row.tariff !== undefined
-        ? String(row.tariff)
-        : "",
+    return (
+      <div className="flex items-center justify-end gap-2">
+
+        {/* CREATE / VIEW PO */}
+
+        {existingPO ? (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                setViewPO(existingPO)
+              }
+              className="
+                inline-flex
+                rounded-lg
+                bg-green-100
+                px-3
+                py-1.5
+                text-xs
+                font-semibold
+                text-green-700
+                transition-colors
+                hover:bg-green-200
+              "
+            >
+              {existingPO.po_number}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setRemovePORow(row)
+              }
+              className="
+                rounded-lg
+                border
+                border-destructive/30
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-destructive
+                transition-colors
+                hover:bg-destructive/10
+              "
+            >
+              Delete
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRow(row);
+
+              setSelectedVendorId("");
+
+              setSelectedContainerNumbers(
+                row.containers.map(
+                  (container) =>
+                    container.containerNumber,
+                ),
+              );
+
+              setPoTariffUnit(
+                row.unit === "BL" ||
+                  row.unit === "Container"
+                  ? row.unit
+                  : "",
+              );
+
+              if (row.unit === "BL") {
+                setPoTariff(
+                  row.tariff !== undefined
+                    ? String(row.tariff)
+                    : "",
+                );
+              } else {
+                setPoTariff("");
+              }
+            }}
+            className="
+              rounded-lg
+              bg-primary
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              text-primary-foreground
+              hover:opacity-95
+            "
+          >
+            Create PO
+          </button>
+        )}
+
+
+        {/* IMPORT INVOICE */}
+
+        <button
+          type="button"
+
+          disabled={
+            !canImportInvoice
+          }
+
+          onClick={() => {
+            if (!existingPO) {
+              return;
+            }
+
+            setInvoicePO(
+              existingPO,
+            );
+
+            setInvoiceFile(
+              null,
+            );
+          }}
+
+          className={`
+            inline-flex
+            items-center
+            gap-1.5
+            rounded-lg
+            border
+            px-3
+            py-1.5
+            text-xs
+            font-medium
+            transition-colors
+
+            ${
+              invoiceReceived
+                ? `
+                    border-green-200
+                    bg-green-50
+                    text-green-700
+                    hover:bg-green-100
+                  `
+                : `
+                    border-border
+                    bg-background
+                    hover:bg-accent
+                  `
+            }
+
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          `}
+        >
+          <Upload className="h-3.5 w-3.5" />
+
+          {invoiceReceived
+            ? "Invoice Received"
+            : "Import Invoice"}
+        </button>
+
+      </div>
     );
-  } else {
-    setPoTariff("");
-  }
-}}
-    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-95"
-  >
-    Create PO
-  </button>
-)}
-                    </TableCell>
+  })()}
+</TableCell>
                   </tr>
                 ))
               )}
@@ -1012,6 +1146,407 @@ setSelectedContainerNumbers(
     </div>
   </div>
 )}
+
+{invoicePO && (
+  <div
+    className="
+      fixed
+      inset-0
+      z-50
+      grid
+      place-items-center
+      bg-black/40
+      p-4
+      backdrop-blur-sm
+    "
+    onClick={() => {
+      if (!invoiceUploading) {
+        setInvoicePO(null);
+        setInvoiceFile(null);
+      }
+    }}
+  >
+    <div
+      className="
+        w-full
+        max-w-lg
+        rounded-2xl
+        border
+        border-border
+        bg-card
+        p-6
+        shadow-2xl
+      "
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
+
+      <div>
+        <h2 className="text-lg font-semibold">
+          {invoicePO.invoice_status ===
+          "Received"
+            ? "Replace Vendor Invoice"
+            : "Import Vendor Invoice"}
+        </h2>
+
+        <p className="mt-1 text-sm text-muted-foreground">
+          Upload the invoice received from the vendor.
+        </p>
+      </div>
+
+
+      {/* PO INFORMATION */}
+
+      <div
+        className="
+          mt-5
+          grid
+          grid-cols-2
+          gap-4
+          rounded-xl
+          border
+          border-border
+          bg-muted/30
+          p-4
+          text-sm
+        "
+      >
+
+        <Info
+          label="PO Number"
+          value={
+            invoicePO.po_number
+          }
+        />
+
+        <Info
+          label="Job Number"
+          value={
+            invoicePO.job_number
+          }
+        />
+
+        <Info
+          label="Vendor"
+          value={
+            invoicePO.vendor_name
+          }
+        />
+
+        <Info
+          label="Vendor Code"
+          value={
+            invoicePO.vendor_code ??
+            "—"
+          }
+        />
+
+        <Info
+          label="Service"
+          value={
+            invoicePO.service_name
+          }
+        />
+
+        <Info
+          label="Status"
+          value={
+            invoicePO.invoice_status ===
+            "Received"
+              ? "Invoice Received"
+              : "Pending Invoice"
+          }
+        />
+
+      </div>
+
+
+      {/* EXISTING INVOICE */}
+
+      {invoicePO.invoice_status ===
+        "Received" && (
+        <div
+          className="
+            mt-4
+            rounded-lg
+            border
+            border-green-200
+            bg-green-50
+            px-4
+            py-3
+          "
+        >
+          <p className="text-sm font-medium text-green-700">
+            Invoice already received
+          </p>
+
+          {invoicePO.invoice_original_name && (
+            <p className="mt-1 text-xs text-green-700">
+              {
+                invoicePO.invoice_original_name
+              }
+            </p>
+          )}
+        </div>
+      )}
+
+
+      {/* FILE INPUT */}
+
+      <div className="mt-5">
+
+        <label className="mb-1.5 block text-xs font-medium">
+          Invoice File{" "}
+          <span className="text-destructive">
+            *
+          </span>
+        </label>
+
+        <input
+          type="file"
+
+          accept="
+            application/pdf,
+            image/jpeg,
+            image/png,
+            .pdf,
+            .jpg,
+            .jpeg,
+            .png
+          "
+
+          disabled={
+            invoiceUploading
+          }
+
+          onChange={(event) => {
+            const file =
+              event.target.files?.[0] ??
+              null;
+
+            if (!file) {
+              setInvoiceFile(null);
+              return;
+            }
+
+            const allowedTypes = [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+            ];
+
+            if (
+              !allowedTypes.includes(
+                file.type,
+              )
+            ) {
+              toast.error(
+                "Invoice must be PDF, JPG, JPEG, or PNG.",
+              );
+
+              event.target.value =
+                "";
+
+              setInvoiceFile(null);
+
+              return;
+            }
+
+            if (
+              file.size >
+              10 * 1024 * 1024
+            ) {
+              toast.error(
+                "Invoice file size must not exceed 10 MB.",
+              );
+
+              event.target.value =
+                "";
+
+              setInvoiceFile(null);
+
+              return;
+            }
+
+            setInvoiceFile(
+              file,
+            );
+          }}
+
+          className="
+            block
+            w-full
+            rounded-lg
+            border
+            border-border
+            bg-background
+            px-3
+            py-2
+            text-sm
+            file:mr-3
+            file:rounded-md
+            file:border-0
+            file:bg-muted
+            file:px-3
+            file:py-1.5
+            file:text-xs
+            file:font-medium
+          "
+        />
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          PDF, JPG, JPEG or PNG. Maximum 10 MB.
+        </p>
+
+      </div>
+
+
+      {/* ACTIONS */}
+
+      <div className="mt-6 flex justify-end gap-2">
+
+        <button
+          type="button"
+
+          disabled={
+            invoiceUploading
+          }
+
+          onClick={() => {
+            setInvoicePO(null);
+            setInvoiceFile(null);
+          }}
+
+          className="
+            rounded-lg
+            border
+            border-border
+            bg-background
+            px-4
+            py-2
+            text-sm
+            font-medium
+            hover:bg-accent
+            disabled:opacity-50
+          "
+        >
+          Cancel
+        </button>
+
+
+        <button
+          type="button"
+
+          disabled={
+            !invoiceFile ||
+            invoiceUploading
+          }
+
+          onClick={async () => {
+
+            if (!invoiceFile) {
+              toast.error(
+                "Please select an invoice file.",
+              );
+
+              return;
+            }
+
+            try {
+
+              setInvoiceUploading(
+                true,
+              );
+
+             await apiClient
+  .uploadPurchaseOrderInvoice(
+    invoicePO.po_number,
+    invoiceFile,
+  );
+
+
+// -----------------------------------------
+// REFRESH PURCHASE ORDERS
+//
+// Backend has now changed:
+//
+// invoice_status:
+// Pending -> Received
+//
+// Refetch before closing so the table gets
+// the latest PO state immediately.
+// -----------------------------------------
+
+await queryClient.invalidateQueries({
+  queryKey: [
+    "purchaseOrders",
+  ],
+});
+
+
+toast.success(
+  invoicePO.invoice_status ===
+    "Received"
+    ? "Invoice replaced successfully."
+    : "Invoice uploaded successfully. Vendor reminders will stop for this Purchase Order.",
+);
+
+
+setInvoicePO(
+  null,
+);
+
+setInvoiceFile(
+  null,
+);  
+
+              // We need fresh purchaseOrders data here.
+              // See note below.
+
+            } catch (error) {
+
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to upload invoice.",
+              );
+
+            } finally {
+
+              setInvoiceUploading(
+                false,
+              );
+            }
+          }}
+
+          className="
+            rounded-lg
+            bg-primary
+            px-4
+            py-2
+            text-sm
+            font-medium
+            text-primary-foreground
+            hover:opacity-95
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+          "
+        >
+          {invoiceUploading
+            ? "Uploading..."
+            : invoicePO.invoice_status ===
+                "Received"
+              ? "Replace Invoice"
+              : "Upload Invoice"}
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+
 
 {removePORow && (
   <div

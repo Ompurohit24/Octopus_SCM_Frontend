@@ -1,6 +1,8 @@
 
 import type { EntityKey, EntityMap, ID } from "./types";
 
+
+
 const API = import.meta.env.VITE_API_URL;
  
 // const API = "https://octopus-scm-backend.onrender.com";
@@ -1001,6 +1003,31 @@ async cancelPurchaseOrderService(
   );
 },
 
+
+
+async uploadPurchaseOrderInvoice(
+  poNumber: string,
+  file: File,
+): Promise<EntityMap["purchaseOrders"]> {
+  const formData = new FormData();
+
+  formData.append(
+    "invoice",
+    file,
+  );
+
+  return request<
+    EntityMap["purchaseOrders"]
+  >(
+    `/purchase-orders/${encodeURIComponent(
+      poNumber,
+    )}/invoice`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+},
 
 };
 
