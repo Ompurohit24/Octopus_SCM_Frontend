@@ -87,27 +87,84 @@ export function useUpdateEntity<K extends EntityKey>(key: K, label = "Record") {
   });
 }
 
-export function useDeleteEntity<K extends EntityKey>(key: K, label = "Record") {
+export function useDeleteEntity<K extends EntityKey>(
+  key: K,
+  label = "Record",
+) {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: (id: ID) => apiClient.remove(key, id),
+    mutationFn: (id: ID) =>
+      apiClient.remove(key, id),
+
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [key] });
-      toast.success(`${label} deleted`);
+      qc.invalidateQueries({
+        queryKey: [key],
+      });
+
+      toast.success(
+        `${label} deleted`,
+      );
     },
-    onError: (e: Error) => toast.error(e.message || `Failed to delete ${label}`),
+
+    onError: (e: Error) => {
+      // These modules display business-rule deletion
+      // errors using a centered dialog in ModulePage.
+      if (
+        key === "importJobs" ||
+        key === "customers" ||
+        key === "vendors"
+      ) {
+        return;
+      }
+
+      toast.error(
+        e.message ||
+          `Failed to delete ${label}`,
+      );
+    },
   });
 }
 
-export function useBulkDelete<K extends EntityKey>(key: K, label = "Records") {
+export function useBulkDelete<K extends EntityKey>(
+  key: K,
+  label = "Records",
+) {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: (ids: ID[]) => apiClient.removeMany(key, ids),
+    mutationFn: (ids: ID[]) =>
+      apiClient.removeMany(
+        key,
+        ids,
+      ),
+
     onSuccess: (_, ids) => {
-      qc.invalidateQueries({ queryKey: [key] });
-      toast.success(`${ids.length} ${label.toLowerCase()} deleted`);
+      qc.invalidateQueries({
+        queryKey: [key],
+      });
+
+      toast.success(
+        `${ids.length} ${label.toLowerCase()} deleted`,
+      );
     },
-    onError: (e: Error) => toast.error(e.message || `Failed to delete ${label}`),
+
+    onError: (e: Error) => {
+      // These modules display business-rule deletion
+      // errors using a centered dialog in ModulePage.
+      if (
+        key === "importJobs" ||
+        key === "customers" ||
+        key === "vendors"
+      ) {
+        return;
+      }
+
+      toast.error(
+        e.message ||
+          `Failed to delete ${label}`,
+      );
+    },
   });
 }
 

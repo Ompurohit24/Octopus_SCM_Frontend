@@ -407,6 +407,48 @@ function CrudModulePage<K extends EntityKey>({
   const [deleteRow, setDeleteRow] = useState<EntityMap[K] | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
+
+const [
+  deleteBlockedOpen,
+  setDeleteBlockedOpen,
+] = useState(false);
+
+const [
+  deleteBlockedTitle,
+  setDeleteBlockedTitle,
+] = useState("");
+
+const [
+  deleteBlockedMessage,
+  setDeleteBlockedMessage,
+] = useState("");
+
+
+
+const showDeleteBlockedDialog = (
+  error: unknown,
+) => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : `Unable to delete ${config.singular}.`;
+
+  let title = `Cannot Delete ${config.singular}`;
+
+  if (config.key === "importJobs") {
+    title = "Cannot Delete Import Job";
+  } else if (config.key === "customers") {
+    title = "Cannot Delete Customer";
+  } else if (config.key === "vendors") {
+    title = "Cannot Delete Vendor";
+  }
+
+  setDeleteBlockedTitle(title);
+  setDeleteBlockedMessage(message);
+  setDeleteBlockedOpen(true);
+};
+
+
   const filter: Record<string, string | undefined> = {};
   if (config.tabFilterKey && tab !== "all") filter[config.tabFilterKey] = tab;
 
@@ -906,21 +948,57 @@ function openCreate() {
 }}
       />
 
-      <ConfirmDialog
-        open={!!deleteRow}
-        onOpenChange={(o) => !o && setDeleteRow(null)}
-        title={`Delete ${config.singular}?`}
-        description="This action cannot be undone."
-        destructive
-        confirmLabel="Delete"
-        onConfirm={async () => {
-          if (!deleteRow) return;
-          await remove.mutateAsync((deleteRow as { id: ID }).id);
-          setDeleteRow(null);
-        }}
-      />
+     <ConfirmDialog
+  open={!!deleteRow}
+  onOpenChange={(open) => {
+    if (!open) {
+      setDeleteRow(null);
+    }
+  }}
+  title={`Delete ${config.singular}?`}
+  description="This action cannot be undone."
+  destructive
+  confirmLabel="Delete"
+  onConfirm={async () => {
+    if (!deleteRow) return;
 
-   <ConfirmDialog
+    try {
+      await remove.mutateAsync(
+        (deleteRow as { id: ID }).id,
+      );
+
+      setDeleteRow(null);
+
+    } catch (error) {
+      setDeleteRow(null);
+
+      if (
+        config.key === "importJobs" ||
+        config.key === "customers" ||
+        config.key === "vendors"
+      ) {
+        const title =
+          config.key === "importJobs"
+            ? "Cannot Delete Import Job"
+            : config.key === "customers"
+              ? "Cannot Delete Customer"
+              : "Cannot Delete Vendor";
+
+        setDeleteBlockedTitle(title);
+
+        setDeleteBlockedMessage(
+          error instanceof Error
+            ? error.message
+            : `Unable to delete ${config.singular}.`,
+        );
+
+        setDeleteBlockedOpen(true);
+      }
+    }
+  }}
+/>
+
+<ConfirmDialog
   open={bulkDeleteOpen}
   onOpenChange={setBulkDeleteOpen}
   title={`Delete ${selected.size} ${config.plural.toLowerCase()}?`}
@@ -941,28 +1019,45 @@ function openCreate() {
       setBulkDeleteOpen(false);
 
     } catch (error) {
-
-      // Keep the selected rows and close only the
-      // original delete confirmation.
       setBulkDeleteOpen(false);
 
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to delete the selected Import Job.";
+      if (
+        config.key === "importJobs" ||
+        config.key === "customers" ||
+        config.key === "vendors"
+      ) {
+        const title =
+          config.key === "importJobs"
+            ? "Cannot Delete Import Job"
+            : config.key === "customers"
+              ? "Cannot Delete Customer"
+              : "Cannot Delete Vendor";
 
-      // Your useBulkDelete mutation already displays
-      // backend errors through toast.error().
-      //
-      // Do NOT clear `selected` here because deletion
-      // was blocked.
-      console.error(
-        "Bulk delete blocked:",
-        message,
-      );
+        setDeleteBlockedTitle(title);
+
+        setDeleteBlockedMessage(
+          error instanceof Error
+            ? error.message
+            : `Unable to delete the selected ${config.plural}.`,
+        );
+
+        setDeleteBlockedOpen(true);
+      }
     }
   }}
 />
+
+<ConfirmDialog
+  open={deleteBlockedOpen}
+  onOpenChange={setDeleteBlockedOpen}
+  title={deleteBlockedTitle}
+  description={deleteBlockedMessage}
+  confirmLabel="OK"
+  onConfirm={() => {
+    setDeleteBlockedOpen(false);
+  }}
+/>
+
     </div>
   );
 }
