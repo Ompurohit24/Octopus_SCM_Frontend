@@ -358,26 +358,6 @@ const eligibleVendors = useMemo(() => {
     return [];
   }
 
-const service =
-  selectedRow.category === "Transportation"
-    ? "transport"
-    : selectedRow.serviceName
-        .trim()
-        .toLowerCase();
-
-  return vendors.filter((vendor) => {
-    if (
-      vendor.is_active === false ||
-      vendor.is_deleted === true
-    ) {
-      return false;
-    }
-
-    const eligibleVendors = useMemo(() => {
-  if (!selectedRow) {
-    return [];
-  }
-
   const requiredService =
     selectedRow.category === "Transportation"
       ? "transport"
@@ -416,10 +396,6 @@ const service =
     return vendorServices.includes(
       requiredService,
     );
-  });
-}, [vendors, selectedRow]);
-
-    
   });
 }, [vendors, selectedRow]);
 
