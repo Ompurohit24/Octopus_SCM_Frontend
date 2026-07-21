@@ -480,11 +480,11 @@ const startRegistrationOTP = async (
 
   if (isCustomer) {
     formData.set(
-      "customer_name",
-      String(
-        values.customerName ?? "",
-      ),
-    );
+  "customer_name",
+  String(
+    values.customer_name ?? "",
+  ),
+);
 
     formData.set(
       "management_email",

@@ -274,6 +274,7 @@ fields: [
   name: "managementEmail",
   label: "Management Email",
   type: "text",
+  required: true,
   email: true,
   placeholder: "Enter management email",
 },
