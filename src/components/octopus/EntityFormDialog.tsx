@@ -16,6 +16,14 @@ import {
   Upload,
   FileText,
 } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 // import { useEntityAll } from "@/lib/api/hooks";
 import { Pencil } from "lucide-react";
 import type { EntityKey } from "@/lib/api/types";
@@ -26,6 +34,11 @@ import {
 } from "@/lib/api/hooks";
 import { Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api/storage";
+import {
+  savePendingRegistration,
+  getLatestPendingRegistration,
+  removePendingRegistration,
+} from "@/lib/pendingRegistration";
 import SearchableJobSelect from "@/components/octopus/SearchableJobSelect";
 
 interface Props<T> {
@@ -293,7 +306,722 @@ const [updatedImportSuccessDialog, setUpdatedImportSuccessDialog] = useState(fal
 const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
 const [createdImportJob, setCreatedImportJob] = useState<Record<string, unknown>>({});
-  if (!open) return null;
+
+// Customer OTP verification
+// -------------------------------------------------
+// CUSTOMER / VENDOR REGISTRATION OTP
+// -------------------------------------------------
+
+type OTPVerificationField = {
+  key: string;
+  label: string;
+  email: string;
+  otp_sent?: boolean;
+  verified?: boolean;
+};
+
+const [otpDialog, setOtpDialog] = useState(false);
+
+const [registrationId, setRegistrationId] = useState("");
+
+const [registrationEntityType, setRegistrationEntityType] =
+  useState<"customer" | "vendor" | null>(null);
+
+const [registrationEntityName, setRegistrationEntityName] =
+  useState("");
+
+const [otpVerificationFields, setOtpVerificationFields] =
+  useState<OTPVerificationField[]>([]);
+
+const [otpValues, setOtpValues] =
+  useState<Record<string, string>>({});
+
+const [otpError, setOtpError] = useState("");
+
+const [otpLoading, setOtpLoading] = useState(false);
+
+const [resendingOTPKey, setResendingOTPKey] =
+  useState<string | null>(null);
+
+
+const openRegistrationOTPDialog = (
+  response: {
+    registration_id: string;
+    entity_type: "customer" | "vendor";
+    entity_name: string;
+    expires_at: string;
+    verification_fields: OTPVerificationField[];
+  },
+) => {
+  setRegistrationId(response.registration_id);
+
+  setRegistrationEntityType(
+    response.entity_type,
+  );
+
+  setRegistrationEntityName(
+    response.entity_name,
+  );
+
+  setOtpVerificationFields(
+    response.verification_fields ?? [],
+  );
+
+  const initialOTPValues: Record<string, string> = {};
+
+  for (
+    const field of response.verification_fields ?? []
+  ) {
+    initialOTPValues[field.key] = "";
+  }
+
+  setOtpValues(initialOTPValues);
+
+setOtpError("");
+
+savePendingRegistration({
+  registrationId:
+    response.registration_id,
+
+  entityType:
+    response.entity_type,
+
+  entityName:
+    response.entity_name,
+
+  expiresAt:
+    response.expires_at,
+});
+
+setOtpDialog(true);
+};
+
+
+
+const startRegistrationOTP = async (
+  values: Record<string, any>,
+) => {
+  const isCustomer =
+    title === "New Customer";
+
+  const isVendor =
+    title === "New Vendor";
+
+  if (!isCustomer && !isVendor) {
+    return false;
+  }
+
+  const formData = new FormData();
+
+  // -------------------------------------------------
+  // COMMON FIELDS
+  // -------------------------------------------------
+
+  formData.set(
+    "address",
+    String(
+      values.address ?? "",
+    ),
+  );
+
+  formData.set(
+    "countryCode",
+    String(
+      values.countryCode ?? "+91",
+    ),
+  );
+
+  formData.set(
+    "phone",
+    String(
+      values.phone ?? "",
+    ),
+  );
+
+  formData.set(
+    "gstin",
+    String(
+      values.gstin ?? "",
+    ),
+  );
+
+  formData.set(
+    "pan",
+    String(
+      values.pan ?? "",
+    ),
+  );
+
+  // -------------------------------------------------
+  // GST / PAN DOCUMENTS
+  // -------------------------------------------------
+
+  if (
+    values.gstDocument instanceof File
+  ) {
+    formData.set(
+      "gst_document",
+      values.gstDocument,
+    );
+  }
+
+  if (
+    values.panDocument instanceof File
+  ) {
+    formData.set(
+      "pan_document",
+      values.panDocument,
+    );
+  }
+
+  // =================================================
+  // CUSTOMER
+  // =================================================
+
+  if (isCustomer) {
+    formData.set(
+      "customer_name",
+      String(
+        values.customerName ?? "",
+      ),
+    );
+
+    formData.set(
+      "management_email",
+      String(
+        values.managementEmail ?? "",
+      ),
+    );
+
+    formData.set(
+      "accounts_email",
+      String(
+        values.accountsEmail ?? "",
+      ),
+    );
+
+    formData.set(
+      "operations_email",
+      String(
+        values.operationsEmail ?? "",
+      ),
+    );
+
+    formData.set(
+      "tan",
+      String(
+        values.tan ?? "",
+      ),
+    );
+
+    const response =
+      await apiClient
+        .startCustomerRegistration(
+          formData,
+        );
+
+    openRegistrationOTPDialog(
+      response,
+    );
+
+    return true;
+  }
+
+  // =================================================
+  // VENDOR
+  // =================================================
+
+  formData.set(
+    "vendor_code",
+    String(
+      values.vendorCode ?? "",
+    ),
+  );
+
+  formData.set(
+    "vendor_name",
+    String(
+      values.vendorName ?? "",
+    ),
+  );
+
+  formData.set(
+    "email",
+    String(
+      values.email ?? "",
+    ),
+  );
+
+  formData.set(
+    "type_of_service",
+    String(
+      values.typeOfService ?? "",
+    ),
+  );
+
+  const response =
+    await apiClient
+      .startVendorRegistration(
+        formData,
+      );
+
+  openRegistrationOTPDialog(
+    response,
+  );
+
+  return true;
+};
+
+
+const verifyRegistrationOTP = async () => {
+  if (
+    !registrationId ||
+    !registrationEntityType
+  ) {
+    setOtpError(
+      "Registration information is missing.",
+    );
+
+    return;
+  }
+
+  setOtpError("");
+
+  // -------------------------------------------------
+  // CHECK REQUIRED OTP FIELDS
+  // -------------------------------------------------
+
+  const pendingFields =
+    otpVerificationFields.filter(
+      (field) => !field.verified,
+    );
+
+  const missingField =
+    pendingFields.find(
+      (field) =>
+        !String(
+          otpValues[field.key] ?? "",
+        ).trim(),
+    );
+
+  if (missingField) {
+    setOtpError(
+      `Enter OTP for ${missingField.label}.`,
+    );
+
+    return;
+  }
+
+  setOtpLoading(true);
+
+  try {
+    // =================================================
+    // CUSTOMER
+    // =================================================
+
+    if (
+      registrationEntityType ===
+      "customer"
+    ) {
+      const result =
+        await apiClient
+          .verifyCustomerRegistration({
+            registration_id:
+              registrationId,
+
+            management_email_otp:
+              otpValues[
+                "management_email"
+              ]?.trim() ||
+              undefined,
+
+            accounts_email_otp:
+              otpValues[
+                "accounts_email"
+              ]?.trim() ||
+              undefined,
+
+            operations_email_otp:
+              otpValues[
+                "operations_email"
+              ]?.trim() ||
+              undefined,
+          });
+
+      if (
+        !result.created ||
+        !result.all_verified
+      ) {
+        setOtpError(
+          result.message ||
+            "OTP verification is incomplete.",
+        );
+
+        return;
+      }
+
+      // ---------------------------------------------
+      // CUSTOMER CREATED SUCCESSFULLY
+      // ---------------------------------------------
+
+
+removePendingRegistration(
+  registrationId,
+);
+
+      setOtpDialog(false);
+
+// Close New Customer form after actual
+// Customer creation succeeds.
+onOpenChange(false);
+
+setCreatedCustomer(
+        (
+          result.customer ?? {}
+        ) as Record<
+          string,
+          unknown
+        >,
+      );
+
+      setSuccessDialog(true);
+
+      // Reset OTP state.
+
+      setRegistrationId("");
+      setRegistrationEntityType(null);
+      setRegistrationEntityName("");
+      setOtpVerificationFields([]);
+      setOtpValues({});
+      setOtpError("");
+
+      return;
+    }
+
+    // =================================================
+    // VENDOR
+    // =================================================
+
+    const vendorField =
+      otpVerificationFields.find(
+        (field) => !field.verified,
+      ) ??
+      otpVerificationFields[0];
+
+    if (!vendorField) {
+      setOtpError(
+        "Vendor email verification information is missing.",
+      );
+
+      return;
+    }
+
+    const result =
+      await apiClient
+        .verifyVendorRegistration({
+          registration_id:
+            registrationId,
+
+          otp:
+            String(
+              otpValues[
+                vendorField.key
+              ] ?? "",
+            ).trim(),
+        });
+
+    if (
+      !result.created ||
+      !result.all_verified
+    ) {
+      setOtpError(
+        result.message ||
+          "OTP verification is incomplete.",
+      );
+
+      return;
+    }
+
+    // ---------------------------------------------
+    // VENDOR CREATED SUCCESSFULLY
+    // ---------------------------------------------
+
+removePendingRegistration(
+  registrationId,
+);
+
+    setOtpDialog(false);
+
+// Close New Vendor form after actual
+// Vendor creation succeeds.
+onOpenChange(false);
+
+setCreatedVendor(
+      (
+        result.vendor ?? {}
+      ) as Record<
+        string,
+        unknown
+      >,
+    );
+
+    setVendorSuccessDialog(true);
+
+    // Reset OTP state.
+
+    setRegistrationId("");
+    setRegistrationEntityType(null);
+    setRegistrationEntityName("");
+    setOtpVerificationFields([]);
+    setOtpValues({});
+    setOtpError("");
+
+  } catch (e) {
+    setOtpError(
+      e instanceof Error
+        ? e.message
+        : "OTP verification failed.",
+    );
+  } finally {
+    setOtpLoading(false);
+  }
+};
+
+
+
+const resendRegistrationOTP = async (
+  emailKey: string,
+) => {
+  if (
+    !registrationId ||
+    !registrationEntityType
+  ) {
+    setOtpError(
+      "Registration information is missing.",
+    );
+
+    return;
+  }
+
+  setOtpError("");
+  setResendingOTPKey(emailKey);
+
+  try {
+    let result;
+
+    // =================================================
+    // CUSTOMER
+    // =================================================
+
+    if (
+      registrationEntityType ===
+      "customer"
+    ) {
+      result =
+        await apiClient
+          .resendCustomerRegistrationOTP(
+            registrationId,
+            emailKey,
+          );
+    }
+
+    // =================================================
+    // VENDOR
+    // =================================================
+
+    else {
+      result =
+        await apiClient
+          .resendVendorRegistrationOTP(
+            registrationId,
+          );
+    }
+
+    if (!result.sent) {
+      setOtpError(
+        result.message ||
+          "Unable to resend OTP.",
+      );
+
+      return;
+    }
+
+    // Clear only the OTP box that was resent.
+
+    setOtpValues(
+      (current) => ({
+        ...current,
+        [emailKey]: "",
+      }),
+    );
+
+  } catch (e) {
+    setOtpError(
+      e instanceof Error
+        ? e.message
+        : "Unable to resend OTP.",
+    );
+  } finally {
+    setResendingOTPKey(null);
+  }
+};
+
+
+
+const resumePendingRegistration = async () => {
+  // -------------------------------------------------
+  // ONLY CUSTOMER / VENDOR CREATE DIALOGS
+  // -------------------------------------------------
+
+  let entityType:
+    | "customer"
+    | "vendor"
+    | null = null;
+
+  if (title === "New Customer") {
+    entityType = "customer";
+  }
+
+  if (title === "New Vendor") {
+    entityType = "vendor";
+  }
+
+  if (!entityType) {
+    return;
+  }
+
+  // -------------------------------------------------
+  // CHECK BROWSER FOR ACTIVE PENDING REGISTRATION
+  //
+  // getLatestPendingRegistration() automatically
+  // ignores/removes expired local registrations.
+  // -------------------------------------------------
+
+  const pending =
+    getLatestPendingRegistration(
+      entityType,
+    );
+
+  if (!pending) {
+    return;
+  }
+
+  try {
+    let registration;
+
+    // =================================================
+    // CUSTOMER
+    // =================================================
+
+    if (entityType === "customer") {
+      registration =
+        await apiClient
+          .getPendingCustomerRegistration(
+            pending.registrationId,
+          );
+    }
+
+    // =================================================
+    // VENDOR
+    // =================================================
+
+    else {
+      registration =
+        await apiClient
+          .getPendingVendorRegistration(
+            pending.registrationId,
+          );
+    }
+
+    // -------------------------------------------------
+    // RESTORE OTP STATE
+    // -------------------------------------------------
+
+    setRegistrationId(
+      registration.registration_id,
+    );
+
+    setRegistrationEntityType(
+      registration.entity_type,
+    );
+
+    setRegistrationEntityName(
+      registration.entity_name,
+    );
+
+    setOtpVerificationFields(
+      registration.verification_fields ?? [],
+    );
+
+    const restoredOTPValues:
+      Record<string, string> = {};
+
+    for (
+      const field of
+      registration.verification_fields ?? []
+    ) {
+      restoredOTPValues[
+        field.key
+      ] = "";
+    }
+
+    setOtpValues(
+      restoredOTPValues,
+    );
+
+    setOtpError("");
+
+    // Directly show OTP dialog.
+    setOtpDialog(true);
+
+  } catch (e) {
+    /*
+     * If backend says the registration no longer
+     * exists / expired / already completed,
+     * remove the stale browser reference.
+     */
+
+    removePendingRegistration(
+      pending.registrationId,
+    );
+
+    console.error(
+      "[Pending Registration Resume]",
+      e,
+    );
+  }
+};
+
+
+
+useEffect(() => {
+  // Only check when the dialog is opened.
+
+  if (!open) {
+    return;
+  }
+
+  // Only Customer and Vendor creation
+  // use pending OTP registration.
+
+  if (
+    title !== "New Customer" &&
+    title !== "New Vendor"
+  ) {
+    return;
+  }
+
+  void resumePendingRegistration();
+
+  // We intentionally run this when the
+  // create dialog opens or its type changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [
+  open,
+  title,
+]);
+
+if (!open) return null;
 
   
  
@@ -337,7 +1065,7 @@ const submit = handleSubmit(async (raw) => {
 }
   }
 
-let saved;
+
 
 const validateServices = (
   services?: Record<string, ServiceItem>
@@ -448,25 +1176,77 @@ if (emailField) {
   }
 }
 
+let saved: unknown;
+
 try {
   console.log(
-  JSON.stringify(cleaned.otherGovAgencyType, null, 2)
-);
+    JSON.stringify(
+      cleaned.otherGovAgencyType,
+      null,
+      2,
+    ),
+  );
 
+  // =================================================
+  // CUSTOMER / VENDOR
+  //
+  // Do not create the actual profile yet.
+  // Start OTP registration first.
+  // =================================================
 
-  saved = await onSubmit(cleaned as Partial<T>);
- 
-  
+  if (
+    title === "New Customer" ||
+    title === "New Vendor"
+  ) {
+    const started =
+      await startRegistrationOTP(
+        cleaned,
+      );
+
+    if (started) {
+      // IMPORTANT:
+      // Stop here.
+      //
+      // Do NOT execute onSubmit().
+      // Customer/Vendor must only be created
+      // after successful OTP verification.
+      return;
+    }
+  }
+
+  // =================================================
+  // EXISTING NORMAL FLOW
+  //
+  // Import Job, Update Job and all other modules
+  // continue unchanged.
+  // =================================================
+
+  saved = await onSubmit(
+    cleaned as Partial<T>,
+  );
+
 } catch (e) {
   const message =
-    e instanceof Error ? e.message : "Operation failed.";
+    e instanceof Error
+      ? e.message
+      : "Operation failed.";
 
   if (title === "Update Job") {
-    setErrorTitle("Validation Error");
+    setErrorTitle(
+      "Validation Error",
+    );
+  } else if (
+    title === "New Customer" ||
+    title === "New Vendor"
+  ) {
+    setErrorTitle(
+      "Registration Error",
+    );
   }
 
   setErrorMessage(message);
   setErrorDialog(true);
+
   return;
 }
 
@@ -502,7 +1282,8 @@ if (title === "Update Job") {
 onOpenChange(false);
 });
 
-  return (
+ return (
+  <>
     <div
       className="fixed inset-0 z-50 flex items-end justify-end bg-foreground/20 backdrop-blur-sm sm:items-center sm:justify-center"
       onClick={() => onOpenChange(false)}
@@ -1440,9 +2221,230 @@ const baseInput =
 />
 
 
-      </div>
+        </div>
     </div>
-  );
+
+    {/* =================================================
+    CUSTOMER / VENDOR OTP VERIFICATION DIALOG
+================================================= */}
+
+<Dialog
+  open={otpDialog}
+  onOpenChange={(nextOpen) => {
+    setOtpDialog(nextOpen);
+
+    if (!nextOpen) {
+      setOtpError("");
+    }
+  }}
+>
+  <DialogContent
+    className="
+      sm:max-w-[560px]
+      max-h-[90vh]
+      overflow-y-auto
+    "
+  >
+    <DialogHeader>
+      <DialogTitle>
+        Verify Email OTP
+      </DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-5">
+
+      {/* ENTITY INFORMATION */}
+
+      <div className="rounded-lg border p-4">
+        <p className="text-sm text-muted-foreground">
+          {registrationEntityType === "customer"
+            ? "Customer"
+            : "Vendor"}
+        </p>
+
+        <p className="font-semibold">
+          {registrationEntityName}
+        </p>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          Enter the OTP sent to each email address.
+          Registration will be completed only after
+          successful email verification.
+        </p>
+      </div>
+
+
+      {/* DYNAMIC OTP INPUTS */}
+
+      <div className="space-y-4">
+        {otpVerificationFields.map((field) => (
+          <div
+            key={field.key}
+            className="rounded-lg border p-4"
+          >
+            <div className="mb-3">
+              <p className="text-sm font-medium">
+                {field.label}
+              </p>
+
+              <p className="text-xs text-muted-foreground">
+                {field.email}
+              </p>
+            </div>
+
+            {field.verified ? (
+              <div className="text-sm font-medium text-green-600">
+                ✓ Email verified
+              </div>
+            ) : (
+  <div className="space-y-2">
+
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      maxLength={6}
+      placeholder="Enter 6-digit OTP"
+      value={
+        otpValues[field.key] ?? ""
+      }
+      disabled={
+        otpLoading ||
+        resendingOTPKey === field.key
+      }
+      onChange={(e) => {
+        const value =
+          e.target.value
+            .replace(/\D/g, "")
+            .slice(0, 6);
+
+        setOtpValues(
+          (current) => ({
+            ...current,
+            [field.key]: value,
+          }),
+        );
+
+        if (otpError) {
+          setOtpError("");
+        }
+      }}
+      className="
+        h-10
+        w-full
+        rounded-lg
+        border
+        border-border
+        bg-background
+        px-3
+        text-sm
+        outline-none
+        transition-colors
+        focus:border-ring
+        focus:ring-2
+        focus:ring-ring/20
+        disabled:cursor-not-allowed
+        disabled:opacity-60
+      "
+    />
+
+    <div className="flex justify-end">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={
+          otpLoading ||
+          resendingOTPKey !== null
+        }
+        onClick={() => {
+          void resendRegistrationOTP(
+            field.key,
+          );
+        }}
+      >
+        {resendingOTPKey === field.key
+          ? "Sending..."
+          : "Resend OTP"}
+      </Button>
+    </div>
+
+  </div>
+)}
+          </div>
+        ))}
+      </div>
+
+
+      {/* OTP ERROR */}
+
+      {otpError && (
+        <div
+          className="
+            rounded-lg
+            border
+            border-destructive/30
+            bg-destructive/5
+            px-4
+            py-3
+            text-sm
+            text-destructive
+          "
+        >
+          {otpError}
+        </div>
+      )}
+
+
+      {/* ACTION BUTTONS */}
+
+      <DialogFooter className="gap-2">
+
+        <Button
+  type="button"
+  variant="outline"
+  disabled={otpLoading}
+  onClick={() => {
+    // Close OTP popup.
+    setOtpDialog(false);
+
+    // Clear only OTP text entered in this session.
+    // Do NOT remove the pending registration.
+    setOtpValues({});
+    setOtpError("");
+
+    // Close the underlying New Customer/Vendor form.
+    // The pending registration remains stored and
+    // can be resumed when the form is opened again.
+    onOpenChange(false);
+  }}
+>
+  Verify Later
+</Button>
+
+        <Button
+          type="button"
+          disabled={
+            otpLoading ||
+            otpVerificationFields.length === 0
+          }
+          onClick={() => {
+            void verifyRegistrationOTP();
+          }}
+        >
+          {otpLoading
+            ? "Verifying..."
+            : "Verify & Create"}
+        </Button>
+
+      </DialogFooter>
+
+    </div>
+  </DialogContent>
+</Dialog>
+
+  </>
+);
 }
 
 export function ConfirmDialog({

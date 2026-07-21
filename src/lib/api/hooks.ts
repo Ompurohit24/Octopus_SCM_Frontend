@@ -12,6 +12,8 @@ export const qk = {
   one: (key: EntityKey, id: ID) => [key, "one", id] as const,
 };
 
+
+
 export function useEntityList<K extends EntityKey>(key: K, query: ListQuery = {}) {
   return useQuery({
     queryKey: qk.list(key, query),

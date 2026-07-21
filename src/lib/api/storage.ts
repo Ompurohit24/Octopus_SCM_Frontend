@@ -491,7 +491,190 @@ export interface CancelledPurchaseOrder {
   cancelled_at?: string | null;
 }
 
+
+
+export type RegistrationVerificationField = {
+  key: string;
+  label: string;
+  email: string;
+  otp_sent?: boolean;
+  verified?: boolean;
+};
+
+export type RegistrationStartResponse = {
+  registration_id: string;
+  entity_type: "customer" | "vendor";
+  entity_name: string;
+  status: "pending";
+  expires_at: string;
+
+  verification_fields: RegistrationVerificationField[];
+
+  all_otps_sent: boolean;
+  message: string;
+};
+
+export type PendingRegistrationResponse = {
+  registration_id: string;
+  entity_type: "customer" | "vendor";
+  entity_name: string;
+  status: "pending";
+  expires_at: string;
+
+  verification_fields: RegistrationVerificationField[];
+
+  form_data: Record<string, unknown>;
+
+  has_gst_document: boolean;
+  has_pan_document: boolean;
+};
+
+export type CustomerOTPVerifyPayload = {
+  registration_id: string;
+
+  management_email_otp?: string;
+  accounts_email_otp?: string;
+  operations_email_otp?: string;
+};
+
+export type VendorOTPVerifyPayload = {
+  registration_id: string;
+  otp: string;
+};
+
+export type RegistrationVerifyResponse<T> = {
+  created: boolean;
+  all_verified: boolean;
+
+  customer?: T;
+  vendor?: T;
+
+  message: string;
+};
+
+export type ResendOTPResponse = {
+  sent: boolean;
+  email_key: string;
+  email: string;
+  otp_expires_at: string;
+  message: string;
+};
+
+
+
 export const apiClient = {
+
+
+
+startCustomerRegistration(
+  formData: FormData,
+) {
+  return request<RegistrationStartResponse>(
+    "/customers/registration/start",
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+},
+
+verifyCustomerRegistration(
+  payload: CustomerOTPVerifyPayload,
+) {
+  return request<
+    RegistrationVerifyResponse<any>
+  >(
+    "/customers/registration/verify",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+},
+
+getPendingCustomerRegistration(
+  registrationId: string,
+) {
+  return request<PendingRegistrationResponse>(
+    `/customers/registration/pending/${encodeURIComponent(
+      registrationId,
+    )}`,
+  );
+},
+
+resendCustomerRegistrationOTP(
+  registrationId: string,
+  emailKey: string,
+) {
+  return request<ResendOTPResponse>(
+    "/customers/registration/resend-otp",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        registration_id:
+          registrationId,
+
+        email_key:
+          emailKey,
+      }),
+    },
+  );
+},
+
+startVendorRegistration(
+  formData: FormData,
+) {
+  return request<RegistrationStartResponse>(
+    "/vendors/registration/start",
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+},
+
+verifyVendorRegistration(
+  payload: VendorOTPVerifyPayload,
+) {
+  return request<
+    RegistrationVerifyResponse<any>
+  >(
+    "/vendors/registration/verify",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+},
+
+getPendingVendorRegistration(
+  registrationId: string,
+) {
+  return request<PendingRegistrationResponse>(
+    `/vendors/registration/pending/${encodeURIComponent(
+      registrationId,
+    )}`,
+  );
+},
+
+resendVendorRegistrationOTP(
+  registrationId: string,
+) {
+  return request<ResendOTPResponse>(
+    "/vendors/registration/resend-otp",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        registration_id:
+          registrationId,
+
+        email_key:
+          "vendor_email",
+      }),
+    },
+  );
+},
+
 async list<K extends EntityKey>(
   key: K,
   query: ListQuery = {},
@@ -611,6 +794,36 @@ return {
     customerName: item.customer_name,
     customer_name: item.customer_name,
 
+    managementEmail:
+  item.management_email ??
+  item.managementEmail ??
+  "",
+
+management_email:
+  item.management_email ??
+  item.managementEmail ??
+  "",
+
+accountsEmail:
+  item.accounts_email ??
+  item.accountsEmail ??
+  "",
+
+accounts_email:
+  item.accounts_email ??
+  item.accountsEmail ??
+  "",
+
+operationsEmail:
+  item.operations_email ??
+  item.operationsEmail ??
+  "",
+
+operations_email:
+  item.operations_email ??
+  item.operationsEmail ??
+  "",
+
     vendorCode: item.vendor_code,
     vendor_code: item.vendor_code,
 
@@ -709,6 +922,30 @@ async get<K extends EntityKey>(
     customerName: item.customer_name,
     customer_name: item.customer_name,
 
+    managementEmail:
+  item.management_email ??
+  "",
+
+management_email:
+  item.management_email ??
+  "",
+
+accountsEmail:
+  item.accounts_email ??
+  "",
+
+accounts_email:
+  item.accounts_email ??
+  "",
+
+operationsEmail:
+  item.operations_email ??
+  "",
+
+operations_email:
+  item.operations_email ??
+  "",
+
     countryCode: item.country_code,
   };
 },
@@ -749,44 +986,104 @@ if (key === "importChecklists") {
 
   let payload: any = input;
 
- if (key === "customers") {
-
+if (key === "customers") {
   const formData = new FormData();
 
-  formData.append("customer_code", input.customer_code ?? "");
-  formData.append("customer_name", input.customer_name ?? "");
-  formData.append("address", input.address ?? "");
-  const customerEmails = Array.isArray(input.email)
-  ? input.email
-      .map((email: unknown) => String(email ?? "").trim())
-      .filter(Boolean)
-  : input.email
-    ? [String(input.email).trim()]
-    : [];
+  formData.append(
+    "customer_code",
+    input.customer_code ??
+      input.customerCode ??
+      "",
+  );
 
-formData.append(
-  "email",
-  JSON.stringify(customerEmails),
-);
+  formData.append(
+    "customer_name",
+    input.customer_name ??
+      input.customerName ??
+      "",
+  );
 
-  formData.append("countryCode", input.countryCode ?? "+91");
-  formData.append("phone", input.phone ?? "");
+  formData.append(
+    "address",
+    input.address ?? "",
+  );
 
-  formData.append("gstin", input.gstin ?? "");
-  formData.append("pan", input.pan ?? "");
-  formData.append("tan", input.tan ?? "");
+  // -----------------------------------------
+  // FIXED CUSTOMER EMAIL FIELDS
+  // -----------------------------------------
 
-  if (input.gst_document) {
-    formData.append("gst_document", input.gst_document);
+  formData.append(
+    "management_email",
+    String(
+      input.managementEmail ??
+        input.management_email ??
+        "",
+    ).trim(),
+  );
+
+  formData.append(
+    "accounts_email",
+    String(
+      input.accountsEmail ??
+        input.accounts_email ??
+        "",
+    ).trim(),
+  );
+
+  formData.append(
+    "operations_email",
+    String(
+      input.operationsEmail ??
+        input.operations_email ??
+        "",
+    ).trim(),
+  );
+
+  formData.append(
+    "countryCode",
+    input.countryCode ?? "+91",
+  );
+
+  formData.append(
+    "phone",
+    input.phone ?? "",
+  );
+
+  formData.append(
+    "gstin",
+    input.gstin ?? "",
+  );
+
+  formData.append(
+    "pan",
+    input.pan ?? "",
+  );
+
+  formData.append(
+    "tan",
+    input.tan ?? "",
+  );
+
+  if (
+    input.gst_document instanceof File
+  ) {
+    formData.append(
+      "gst_document",
+      input.gst_document,
+    );
   }
 
-  if (input.pan_document) {
-    formData.append("pan_document", input.pan_document);
+  if (
+    input.pan_document instanceof File
+  ) {
+    formData.append(
+      "pan_document",
+      input.pan_document,
+    );
   }
 
   payload = formData;
 }
-
 if (key === "vendors") {
   const formData = new FormData();
 
@@ -805,21 +1102,12 @@ if (key === "vendors") {
     input.address ?? "",
   );
 
-  const vendorEmails = Array.isArray(input.email)
-    ? input.email
-        .map((email: unknown) =>
-          String(email ?? "").trim(),
-        )
-        .filter(Boolean)
-    : input.email
-      ? [String(input.email).trim()]
-      : [];
-
-  formData.append(
-    "email",
-    JSON.stringify(vendorEmails),
-  );
-
+ formData.append(
+  "email",
+  String(
+    input.email ?? "",
+  ).trim(),
+);
   formData.append(
     "countryCode",
     input.countryCode ?? "+91",
@@ -977,19 +1265,47 @@ return fromImportWorkflow(item) as unknown as EntityMap[K];
 
   // ---------------- Default ----------------
 
- if (key === "customers") {
+if (key === "customers") {
   const customer = patch as any;
 
   patch = {
-    customer_code: customer.customer_code,
-    customer_name: customer.customer_name,
-    address: customer.address,
-    email: customer.email,
-    country_code: customer.countryCode,
-    phone: customer.phone,
-    gstin: customer.gstin,
-    pan: customer.pan,
-    tan: customer.tan,
+    customer_code:
+      customer.customer_code ??
+      customer.customerCode,
+
+    customer_name:
+      customer.customer_name ??
+      customer.customerName,
+
+    address:
+      customer.address,
+
+    management_email:
+      customer.managementEmail ??
+      customer.management_email,
+
+    accounts_email:
+      customer.accountsEmail ??
+      customer.accounts_email,
+
+    operations_email:
+      customer.operationsEmail ??
+      customer.operations_email,
+
+    countryCode:
+      customer.countryCode,
+
+    phone:
+      customer.phone,
+
+    gstin:
+      customer.gstin,
+
+    pan:
+      customer.pan,
+
+    tan:
+      customer.tan,
   } as any;
 }
 
@@ -1019,24 +1335,14 @@ if (key === "vendors") {
     );
   }
 
-  if (vendor.email !== undefined) {
-    const vendorEmails = Array.isArray(
-      vendor.email,
-    )
-      ? vendor.email
-          .map((email: unknown) =>
-            String(email ?? "").trim(),
-          )
-          .filter(Boolean)
-      : vendor.email
-        ? [String(vendor.email).trim()]
-        : [];
-
-    formData.append(
-      "email",
-      JSON.stringify(vendorEmails),
-    );
-  }
+if (vendor.email !== undefined) {
+  formData.append(
+    "email",
+    String(
+      vendor.email ?? "",
+    ).trim(),
+  );
+}
 
   if (vendor.countryCode !== undefined) {
     formData.append(

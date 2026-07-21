@@ -130,20 +130,32 @@ export const customersConfig: EntityConfig<"customers"> = {
     render: (row) => row.address ?? "-",
   },
 
-  {
-  key: "email",
-  label: "Email",
-  sortable: true,
-  render: (row) => {
-    const emails = row.email;
-
-    if (Array.isArray(emails)) {
-      return emails.join(", ");
-    }
-
-    return emails || "-";
-  },
+ {
+  key: "managementEmail",
+  label: "Management Email",
+  render: (row) =>
+    (row as any).managementEmail ??
+    (row as any).management_email ??
+    "-",
 },
+{
+  key: "accountsEmail",
+  label: "Accounts Email",
+  render: (row) =>
+    (row as any).accountsEmail ??
+    (row as any).accounts_email ??
+    "-",
+},
+{
+  key: "operationsEmail",
+  label: "Operations Email",
+  render: (row) =>
+    (row as any).operationsEmail ??
+    (row as any).operations_email ??
+    "-",
+},
+
+
   { key: "phone", label: "Phone" },
   { key: "gstin", label: "GSTIN" },
   { key: "pan", label: "PAN" },
@@ -259,10 +271,25 @@ fields: [
     colSpan: 3,
   },
   {
-  name: "email",
-  label: "Email",
-  type: "emails",
-  required: true,
+  name: "managementEmail",
+  label: "Management Email",
+  type: "text",
+  email: true,
+  placeholder: "Enter management email",
+},
+{
+  name: "accountsEmail",
+  label: "Accounts Email",
+  type: "text",
+  email: true,
+  placeholder: "Enter accounts email",
+},
+{
+  name: "operationsEmail",
+  label: "Operations Email",
+  type: "text",
+  email: true,
+  placeholder: "Enter operations email",
 },
   {
   name: "countryCode",
@@ -413,11 +440,13 @@ export const vendorsConfig: EntityConfig<"vendors"> = {
   required: true,
   hint: "Upload PAN Card (PDF, JPG, PNG)",
 },
-    {
+   {
   name: "email",
   label: "Email ID",
-  type: "emails",
+  type: "text",
   required: true,
+  email: true,
+  placeholder: "Enter email ID",
 },
     {
       name: "countryCode",
