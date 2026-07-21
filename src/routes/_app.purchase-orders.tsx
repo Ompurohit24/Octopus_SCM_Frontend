@@ -155,6 +155,10 @@ const createPurchaseOrder =
         jobMap.get(String(wf.job_number ?? "")) ??
         jobMap.get(String(wf.jobNo ?? ""));
 
+       if (!job) {
+    return;
+  }
+
       const jobNo =
         job?.jobNo ??
         job?.job_number ??
@@ -737,7 +741,7 @@ const eligibleVendors = useMemo(() => {
       {/* CREATE PURCHASE ORDER DIALOG */}
       {selectedRow && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm"
           onClick={() => {
             if (!createPurchaseOrder.isPending) {
               setSelectedRow(null);
@@ -745,9 +749,9 @@ const eligibleVendors = useMemo(() => {
           }}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+  className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+  onClick={(event) => event.stopPropagation()}
+>
             <h2 className="text-lg font-semibold">
               Create Purchase Order
             </h2>
