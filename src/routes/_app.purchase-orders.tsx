@@ -373,16 +373,53 @@ const service =
       return false;
     }
 
-    const vendorServices = String(
-      vendor.type_of_service ?? "",
-    )
-      .split(",")
-      .map((item) =>
-        item.trim().toLowerCase(),
-      )
-      .filter(Boolean);
+    const eligibleVendors = useMemo(() => {
+  if (!selectedRow) {
+    return [];
+  }
 
-    return vendorServices.includes(service);
+  const requiredService =
+    selectedRow.category === "Transportation"
+      ? "transport"
+      : selectedRow.serviceName
+          .trim()
+          .toLowerCase();
+
+  return vendors.filter((vendor) => {
+    if (
+      vendor.is_active === false ||
+      vendor.is_deleted === true
+    ) {
+      return false;
+    }
+
+    const rawServices =
+      vendor.type_of_service;
+
+    const vendorServices = Array.isArray(rawServices)
+      ? rawServices
+          .map((service) =>
+            String(service)
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean)
+      : String(rawServices ?? "")
+          .split(",")
+          .map((service) =>
+            service
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean);
+
+    return vendorServices.includes(
+      requiredService,
+    );
+  });
+}, [vendors, selectedRow]);
+
+    
   });
 }, [vendors, selectedRow]);
 
