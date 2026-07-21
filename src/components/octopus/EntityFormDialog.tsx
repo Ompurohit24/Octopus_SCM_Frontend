@@ -143,6 +143,37 @@ export function EntityFormDialog<T>({
   
   const formId = useId();
 
+
+
+const [otpOpen, setOtpOpen] =
+  useState(false);
+
+const [
+  otpRegistration,
+  setOtpRegistration,
+] = useState<{
+  registrationId: string;
+  entityType: "customer" | "vendor";
+  entityName: string;
+  expiresAt: string;
+  verificationFields: {
+    key: string;
+    label: string;
+    email: string;
+    verified?: boolean;
+  }[];
+} | null>(null);
+
+
+
+const [otpSubmitting, setOtpSubmitting] =
+  useState(false);
+
+
+
+const [resendingKey, setResendingKey] =
+  useState<string | null>(null);
+
 const stableDefaults = useMemo(
   () => buildDefaults<T>(fields, defaultValues),
   [fields, defaultValues],
@@ -340,8 +371,6 @@ const [otpError, setOtpError] = useState("");
 
 const [otpLoading, setOtpLoading] = useState(false);
 
-const [resendingOTPKey, setResendingOTPKey] =
-  useState<string | null>(null);
 
 
 const openRegistrationOTPDialog = (
@@ -349,7 +378,6 @@ const openRegistrationOTPDialog = (
     registration_id: string;
     entity_type: "customer" | "vendor";
     entity_name: string;
-    expires_at: string;
     verification_fields: OTPVerificationField[];
   },
 ) => {
@@ -377,24 +405,26 @@ const openRegistrationOTPDialog = (
 
   setOtpValues(initialOTPValues);
 
-setOtpError("");
+  setOtpError("");
 
-savePendingRegistration({
-  registrationId:
-    response.registration_id,
-
-  entityType:
-    response.entity_type,
-
-  entityName:
-    response.entity_name,
-
-  expiresAt:
-    response.expires_at,
-});
-
-setOtpDialog(true);
+  setOtpDialog(true);
 };
+
+
+
+// Customer OTP verification
+// -------------------------------------------------
+// CUSTOMER / VENDOR REGISTRATION OTP
+// -------------------------------------------------
+
+
+const [resendingOTPKey, setResendingOTPKey] =
+  useState<string | null>(null);
+
+
+
+
+
 
 
 
@@ -1137,6 +1167,7 @@ if (serviceError) {
 }
 
 
+
 const emailField = fields.find(
   (field) => field.type === "emails",
 );
@@ -1250,17 +1281,17 @@ try {
   return;
 }
 
-if (title === "New Customer") {
-    setCreatedCustomer(saved as Record<string, unknown>);
-    setSuccessDialog(true);
-    return;
-}
+// if (title === "New Customer") {
+//     setCreatedCustomer(saved as Record<string, unknown>);
+//     setSuccessDialog(true);
+//     return;
+// }
 
-if (title === "New Vendor") {
-  setCreatedVendor(saved as Record<string, unknown>);
-  setVendorSuccessDialog(true);
-  return;
-}
+// if (title === "New Vendor") {
+//   setCreatedVendor(saved as Record<string, unknown>);
+//   setVendorSuccessDialog(true);
+//   return;
+// }
 
 if (title === "New Import Job") {
     setCreatedImportJob((saved ?? cleaned) as Record<string, unknown>);
