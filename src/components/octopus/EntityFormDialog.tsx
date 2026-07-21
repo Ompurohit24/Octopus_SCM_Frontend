@@ -699,22 +699,18 @@ removePendingRegistration(
   registrationId,
 );
 
-      setOtpDialog(false);
-
-// Close New Customer form after actual
-// Customer creation succeeds.
-onOpenChange(false);
+setOtpDialog(false);
 
 setCreatedCustomer(
-        (
-          result.customer ?? {}
-        ) as Record<
-          string,
-          unknown
-        >,
-      );
+  (
+    result.customer ?? {}
+  ) as Record<
+    string,
+    unknown
+  >,
+);
 
-      setSuccessDialog(true);
+setSuccessDialog(true);
 
       // Reset OTP state.
 
@@ -784,7 +780,7 @@ removePendingRegistration(
 
 // Close New Vendor form after actual
 // Vendor creation succeeds.
-onOpenChange(false);
+
 
 setCreatedVendor(
       (
