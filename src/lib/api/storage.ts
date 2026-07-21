@@ -12,56 +12,209 @@ function token() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+const REFRESH_TOKEN_KEY = "refresh_token";
+
 async function request<T>(
   url: string,
   options: RequestInit = {},
+  retry = true,
 ): Promise<T> {
+
+  const accessToken =
+    localStorage.getItem(TOKEN_KEY);
+
   const headers: Record<string, string> = {
-  ...(token()
-    ? {
-        Authorization: `Bearer ${token()}`,
+    ...(accessToken
+      ? {
+          Authorization:
+            `Bearer ${accessToken}`,
+        }
+      : {}),
+
+    ...(options.headers as Record<
+      string,
+      string
+    >),
+  };
+
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] =
+      "application/json";
+  }
+
+  let res = await fetch(
+    API + url,
+    {
+      ...options,
+      headers,
+    },
+  );
+
+  // -----------------------------------------
+  // ACCESS TOKEN EXPIRED
+  //
+  // Try refreshing once.
+  // -----------------------------------------
+
+  if (
+    res.status === 401 &&
+    retry &&
+    url !== "/auth/login" &&
+    url !== "/auth/refresh"
+  ) {
+
+    const refreshToken =
+      localStorage.getItem(
+        REFRESH_TOKEN_KEY,
+      );
+
+    if (refreshToken) {
+
+      try {
+
+        const refreshResponse =
+          await fetch(
+            API + "/auth/refresh",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                refresh_token:
+                  refreshToken,
+              }),
+            },
+          );
+
+        if (refreshResponse.ok) {
+
+          const refreshData =
+            await refreshResponse.json();
+
+          const newAccessToken =
+            refreshData.access_token;
+
+          if (newAccessToken) {
+
+            localStorage.setItem(
+              TOKEN_KEY,
+              newAccessToken,
+            );
+
+            // Retry original request ONCE
+            // using the new access token.
+
+            return request<T>(
+              url,
+              options,
+              false,
+            );
+          }
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Token refresh failed:",
+          error,
+        );
       }
-    : {}),
-  ...(options.headers as Record<string, string>),
-};
+    }
 
-if (!(options.body instanceof FormData)) {
-  headers["Content-Type"] = "application/json";
-}
+    // -----------------------------------------
+    // REFRESH FAILED / EXPIRED
+    //
+    // Clear authentication.
+    // -----------------------------------------
 
-const res = await fetch(API + url, {
-  ...options,
-  headers,
-});
+    localStorage.removeItem(
+      TOKEN_KEY,
+    );
+
+    localStorage.removeItem(
+      REFRESH_TOKEN_KEY,
+    );
+
+    window.location.href =
+      "/login";
+
+    throw new Error(
+      "Session expired",
+    );
+  }
+
+  // -----------------------------------------
+  // UNAUTHORIZED AFTER RETRY
+  // -----------------------------------------
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    window.location.href = "/";
-    throw new Error("Unauthorized");
+
+    localStorage.removeItem(
+      TOKEN_KEY,
+    );
+
+    localStorage.removeItem(
+      REFRESH_TOKEN_KEY,
+    );
+
+    window.location.href =
+      "/login";
+
+    throw new Error(
+      "Unauthorized",
+    );
   }
+
+  // -----------------------------------------
+  // OTHER API ERRORS
+  // -----------------------------------------
 
   if (!res.ok) {
-    let message = "Request failed";
+
+    let message =
+      "Request failed";
 
     try {
-      const err = await res.json();
 
-console.error("FastAPI Validation Error", err);
+      const err =
+        await res.json();
 
-message =
-  typeof err.detail === "string"
-    ? err.detail
-    : JSON.stringify(err.detail, null, 2);
+      console.error(
+        "FastAPI Validation Error",
+        err,
+      );
+
+      message =
+        typeof err.detail === "string"
+          ? err.detail
+          : JSON.stringify(
+              err.detail,
+              null,
+              2,
+            );
+
     } catch {}
 
-    throw new Error(message);
+    throw new Error(
+      message,
+    );
   }
+
+  // -----------------------------------------
+  // NO CONTENT
+  // -----------------------------------------
 
   if (res.status === 204) {
     return undefined as T;
   }
 
-  return (await res.json()) as T;
+  return (
+    await res.json()
+  ) as T;
 }
 
 const ROUTES: Partial<Record<EntityKey, string>> = {

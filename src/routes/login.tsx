@@ -170,7 +170,15 @@ const onSubmit = handleSubmit(async (values) => {
       throw new Error(data.detail || "Invalid email or password");
     }
 
-    localStorage.setItem("access_token", data.access_token);
+    localStorage.setItem(
+  "access_token",
+  data.access_token,
+);
+
+localStorage.setItem(
+  "refresh_token",
+  data.refresh_token,
+);
 
     const name = values.username.includes(".")
       ? values.username

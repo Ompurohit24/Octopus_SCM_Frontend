@@ -1323,15 +1323,14 @@ const baseInput =
 
       </div>
 
-      <button
-        className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
-        onClick={() => {
-          setUpdatedImportSuccessDialog(false);
-          onOpenChange(false);
-        }}
-      >
-        OK
-      </button>
+     <button
+  className="mt-8 w-full rounded-lg bg-primary py-2 font-semibold text-white"
+  onClick={() => {
+    setUpdatedImportSuccessDialog(false);
+  }}
+>
+  OK
+</button>
 
     </div>
   </div>

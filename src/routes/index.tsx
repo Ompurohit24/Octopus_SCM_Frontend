@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/octopus/Logo";
-import { isAuthenticated } from "@/lib/workspace";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,8 +33,11 @@ function Splash() {
       intervals.push(setTimeout(() => setStep(i), i * 600));
     });
     const goto = setTimeout(() => {
-      navigate({ to: isAuthenticated() ? "/dashboard" : "/login" });
-    }, 2800);
+  navigate({
+    to: "/login",
+    replace: true,
+  });
+}, 2800);
     return () => {
       intervals.forEach(clearTimeout);
       clearTimeout(goto);

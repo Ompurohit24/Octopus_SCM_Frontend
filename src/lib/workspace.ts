@@ -82,11 +82,29 @@ export function useWorkspace() {
   const toggleDark = useCallback(() => persist({ ...memoryState, dark: !memoryState.dark }), []);
   const login = useCallback((user: WorkspaceUser) => persist({ ...memoryState, user }), []);
   const logout = useCallback(() => {
-  localStorage.removeItem("access_token");
-  persist({ ...memoryState, user: null });
+  localStorage.removeItem(
+    "access_token",
+  );
+
+  localStorage.removeItem(
+    "refresh_token",
+  );
+
+  persist({
+    ...memoryState,
+    user: null,
+  });
 }, []);
 
-  return { ...state, setBranch, setFy, setDark, toggleDark, login, logout };
+return {
+  ...state,
+  setBranch,
+  setFy,
+  setDark,
+  toggleDark,
+  login,
+  logout,
+};
 }
 
 export function getInitials(name: string): string {
