@@ -788,17 +788,78 @@ formData.append(
 }
 
 if (key === "vendors") {
-payload = {
-  vendor_code: input.vendor_code,
-  vendor_name: input.vendor_name,
-  address: input.address,
-  email: input.email,
-  countryCode: input.countryCode,
-  phone: input.phone,
-  gstin: input.gstin,
-  pan: input.pan,
-  type_of_service: input.type_of_service,
-};
+  const formData = new FormData();
+
+  formData.append(
+    "vendor_code",
+    input.vendor_code ?? "",
+  );
+
+  formData.append(
+    "vendor_name",
+    input.vendor_name ?? "",
+  );
+
+  formData.append(
+    "address",
+    input.address ?? "",
+  );
+
+  const vendorEmails = Array.isArray(input.email)
+    ? input.email
+        .map((email: unknown) =>
+          String(email ?? "").trim(),
+        )
+        .filter(Boolean)
+    : input.email
+      ? [String(input.email).trim()]
+      : [];
+
+  formData.append(
+    "email",
+    JSON.stringify(vendorEmails),
+  );
+
+  formData.append(
+    "countryCode",
+    input.countryCode ?? "+91",
+  );
+
+  formData.append(
+    "phone",
+    input.phone ?? "",
+  );
+
+  formData.append(
+    "gstin",
+    input.gstin ?? "",
+  );
+
+  formData.append(
+    "pan",
+    input.pan ?? "",
+  );
+
+  formData.append(
+    "type_of_service",
+    input.type_of_service ?? "",
+  );
+
+  if (input.gst_document instanceof File) {
+    formData.append(
+      "gst_document",
+      input.gst_document,
+    );
+  }
+
+  if (input.pan_document instanceof File) {
+    formData.append(
+      "pan_document",
+      input.pan_document,
+    );
+  }
+
+  payload = formData;
 }
 
  if (key === "importJobs") {
@@ -935,17 +996,104 @@ return fromImportWorkflow(item) as unknown as EntityMap[K];
 if (key === "vendors") {
   const vendor = patch as any;
 
-  patch = {
-    vendor_code: vendor.vendor_code,
-    vendor_name: vendor.vendor_name,
-    address: vendor.address,
-    email: vendor.email,
-    countryCode: vendor.countryCode,
-    phone: vendor.phone,
-    gstin: vendor.gstin,
-    pan: vendor.pan,
-    type_of_service: vendor.type_of_service,
-  } as any;
+  const formData = new FormData();
+
+  if (vendor.vendor_code !== undefined) {
+    formData.append(
+      "vendor_code",
+      vendor.vendor_code ?? "",
+    );
+  }
+
+  if (vendor.vendor_name !== undefined) {
+    formData.append(
+      "vendor_name",
+      vendor.vendor_name ?? "",
+    );
+  }
+
+  if (vendor.address !== undefined) {
+    formData.append(
+      "address",
+      vendor.address ?? "",
+    );
+  }
+
+  if (vendor.email !== undefined) {
+    const vendorEmails = Array.isArray(
+      vendor.email,
+    )
+      ? vendor.email
+          .map((email: unknown) =>
+            String(email ?? "").trim(),
+          )
+          .filter(Boolean)
+      : vendor.email
+        ? [String(vendor.email).trim()]
+        : [];
+
+    formData.append(
+      "email",
+      JSON.stringify(vendorEmails),
+    );
+  }
+
+  if (vendor.countryCode !== undefined) {
+    formData.append(
+      "countryCode",
+      vendor.countryCode ?? "+91",
+    );
+  }
+
+  if (vendor.phone !== undefined) {
+    formData.append(
+      "phone",
+      vendor.phone ?? "",
+    );
+  }
+
+  if (vendor.gstin !== undefined) {
+    formData.append(
+      "gstin",
+      vendor.gstin ?? "",
+    );
+  }
+
+  if (vendor.pan !== undefined) {
+    formData.append(
+      "pan",
+      vendor.pan ?? "",
+    );
+  }
+
+  if (
+    vendor.type_of_service !== undefined
+  ) {
+    formData.append(
+      "type_of_service",
+      vendor.type_of_service ?? "",
+    );
+  }
+
+  if (
+    vendor.gst_document instanceof File
+  ) {
+    formData.append(
+      "gst_document",
+      vendor.gst_document,
+    );
+  }
+
+  if (
+    vendor.pan_document instanceof File
+  ) {
+    formData.append(
+      "pan_document",
+      vendor.pan_document,
+    );
+  }
+
+  patch = formData as any;
 }
 if (key === "importJobs") {
   const job = patch as any;
@@ -980,10 +1128,17 @@ if (key === "importJobs") {
     throw new Error(`${key} backend not implemented`);
   }
 
-  const item: any = await request(`${route}/${id}`, {
+ const item: any = await request(
+  `${route}/${id}`,
+  {
     method: "PUT",
-    body: JSON.stringify(patch),
-  });
+
+    body:
+      patch instanceof FormData
+        ? patch
+        : JSON.stringify(patch),
+  },
+);
 
   
 
