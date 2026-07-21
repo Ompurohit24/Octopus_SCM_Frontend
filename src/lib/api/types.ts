@@ -443,9 +443,10 @@ export interface PurchaseOrder {
   // Only containers selected while creating this PO.
   containers: PurchaseOrderContainer[];
 
-  category:
-    | "Other Gov Agency"
-    | "Other Services";
+ category:
+  | "Other Gov Agency"
+  | "Other Services"
+  | "Transportation";
 
   service_name: string;
 

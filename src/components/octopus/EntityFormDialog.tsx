@@ -153,6 +153,25 @@ const { data: nextImportJobNumber } = useNextImportJobNumber();
 
 const [errorDialog, setErrorDialog] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
+const [
+  transportationCancelDialog,
+  setTransportationCancelDialog,
+] = useState(false);
+
+const [
+  pendingTransportation,
+  setPendingTransportation,
+] = useState<{
+  newValue: string;
+  poNumber: string;
+  vendorName: string;
+} | null>(null);
+
+const [
+  checkingTransportation,
+  setCheckingTransportation,
+] = useState(false);
+
 const initialized = useRef(false);
 const hasAutoScrolled = useRef(false);
 
@@ -897,19 +916,135 @@ const baseInput =
   />
 
 ) : f.type === "select" ? (
-  <DynamicSelect
-    field={f}
-    className={baseInput}
-    locked={!!f.readOnly}
-    register={register(f.name, {
-      required: f.required
-        ? `${f.label} is required`
-        : false,
-    })}
-    setErrorDialog={setErrorDialog}
-    setErrorMessage={setErrorMessage}
-    setErrorTitle={setErrorTitle}
-  />
+  f.name === "transportation" &&
+  title === "Update Job" ? (
+    <Controller
+      control={control}
+      name={f.name}
+      rules={{
+        required: f.required
+          ? `${f.label} is required`
+          : false,
+      }}
+      render={({ field: ctl }) => (
+        <select
+          className={baseInput}
+          disabled={
+            !!f.readOnly ||
+            checkingTransportation
+          }
+          value={String(ctl.value ?? "")}
+          onChange={async (e) => {
+            const newValue = e.target.value;
+            const oldValue = String(
+              ctl.value ?? "",
+            );
+
+            // Normal change:
+            // anything -> Octopus,
+            // empty -> Party,
+            // Party -> empty, etc.
+            if (
+              oldValue !== "Octopus" ||
+              newValue === "Octopus"
+            ) {
+              ctl.onChange(newValue);
+              return;
+            }
+
+            // We are removing Octopus.
+            // Do NOT change the field until PO status
+            // has been checked.
+            const jobId = String(
+              watched.job_id ??
+                (
+                  defaultValues as
+                    | Record<string, unknown>
+                    | undefined
+                )?.job_id ??
+                "",
+            );
+
+            if (!jobId) {
+              ctl.onChange(newValue);
+              return;
+            }
+
+            try {
+              setCheckingTransportation(true);
+
+              const result =
+                await apiClient
+                  .getPurchaseOrderServiceStatus(
+                    jobId,
+                    "Transportation",
+                    "Transportation",
+                  );
+
+              // No issued Transportation PO.
+              // Change normally.
+              if (
+                !result.has_issued_po ||
+                !result.purchase_order
+              ) {
+                ctl.onChange(newValue);
+                return;
+              }
+
+              // Issued PO exists.
+              // Keep Octopus selected until confirmed.
+              setPendingTransportation({
+                newValue,
+                poNumber:
+                  result.purchase_order.po_number,
+                vendorName:
+                  result.purchase_order.vendor_name,
+              });
+
+              setTransportationCancelDialog(true);
+            } catch (error) {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to verify Transportation Purchase Order.",
+              );
+            } finally {
+              setCheckingTransportation(false);
+            }
+          }}
+        >
+          <option value="">
+            {checkingTransportation
+              ? "Checking PO..."
+              : "Select..."}
+          </option>
+
+          {(f.options ?? []).map((option) => (
+            <option
+              key={option}
+              value={option}
+            >
+              {option}
+            </option>
+          ))}
+        </select>
+      )}
+    />
+  ) : (
+    <DynamicSelect
+      field={f}
+      className={baseInput}
+      locked={!!f.readOnly}
+      register={register(f.name, {
+        required: f.required
+          ? `${f.label} is required`
+          : false,
+      })}
+      setErrorDialog={setErrorDialog}
+      setErrorMessage={setErrorMessage}
+      setErrorTitle={setErrorTitle}
+    />
+  )
 
 ) : f.type === "textarea" ? (
   <textarea
@@ -1232,6 +1367,79 @@ const baseInput =
     </div>
   </div>
 )}
+
+<ConfirmDialog
+  open={transportationCancelDialog}
+  onOpenChange={(nextOpen) => {
+    setTransportationCancelDialog(
+      nextOpen,
+    );
+
+    if (!nextOpen) {
+      setPendingTransportation(null);
+    }
+  }}
+  title="Cancel Assigned Transportation?"
+  description={
+    pendingTransportation
+      ? `Transportation is already assigned to vendor ${pendingTransportation.vendorName} under ${pendingTransportation.poNumber}. Are you sure you want to change Transportation from Octopus to ${pendingTransportation.newValue || "unselected"}? The Purchase Order will be cancelled and the vendor will be notified by email.`
+      : ""
+  }
+  confirmLabel="Change & Cancel PO"
+  destructive
+  onConfirm={async () => {
+    if (!pendingTransportation) {
+      return;
+    }
+
+    const jobId = String(
+      watched.job_id ??
+        (
+          defaultValues as
+            | Record<string, unknown>
+            | undefined
+        )?.job_id ??
+        "",
+    );
+
+    try {
+      await apiClient
+        .cancelPurchaseOrderService(
+          jobId,
+          "Transportation",
+          "Transportation",
+          "Transportation changed from Octopus to Party",
+        );
+
+      // Only change Transportation AFTER
+      // successful PO cancellation.
+      setValue(
+        "transportation",
+        pendingTransportation.newValue,
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        },
+      );
+
+      setTransportationCancelDialog(false);
+      setPendingTransportation(null);
+
+      toast.success(
+        "Transportation Purchase Order cancelled successfully.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to cancel Transportation Purchase Order.",
+      );
+
+      throw error;
+    }
+  }}
+/>
+
 
       </div>
     </div>

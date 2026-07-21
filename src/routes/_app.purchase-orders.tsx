@@ -43,8 +43,9 @@ type PurchaseOrderServiceRow = {
 }[];
 
   category:
-    | "Other Gov Agency"
-    | "Other Services";
+  | "Other Gov Agency"
+  | "Other Services"
+  | "Transportation";
 
   serviceName: string;
 
@@ -143,9 +144,11 @@ const createPurchaseOrder =
 
     workflows.forEach((workflow) => {
       const wf = workflow as ImportChecklist & {
-        otherGovAgencyType?: Record<string, ServiceItem>;
-        otherServices?: Record<string, ServiceItem>;
-      };
+  otherGovAgencyType?: Record<string, ServiceItem>;
+  otherServices?: Record<string, ServiceItem>;
+
+  transportation?: string;
+};
 
       const job =
         jobMap.get(String(wf.job_id ?? "")) ??
@@ -213,6 +216,8 @@ const containers = containerNumbers.map(
 containers,
 );
 
+
+
     addServices(
   result,
   wf.otherServices,
@@ -225,6 +230,64 @@ containers,
   cfsName,
 containers,
 );
+
+
+// -------------------------------------------------------
+// TRANSPORTATION
+//
+// Only Octopus-managed transportation requires a PO.
+//
+// Party:
+// Customer/party handles transportation themselves.
+// Do not create a Purchase Order row.
+//
+// Octopus:
+// Octopus assigns a transport vendor.
+// Show the job in Purchase Orders.
+// -------------------------------------------------------
+
+if (
+  String(
+    wf.transportation ?? "",
+  )
+    .trim()
+    .toLowerCase() === "octopus"
+) {
+  result.push({
+    id: [
+      jobId || jobNo,
+      "Transportation",
+      "Transportation",
+    ].join("-"),
+
+    jobId: String(jobId),
+    jobNo: String(jobNo),
+
+    consigneeName,
+
+    blNo,
+    beNo,
+    cfsName,
+
+    containers,
+
+    category: "Transportation",
+
+    serviceName: "Transportation",
+
+    status: "Pending",
+
+    unit: "",
+
+    tariff: undefined,
+    tariff20: undefined,
+    tariff40: undefined,
+
+    enable20: false,
+    enable40: false,
+  });
+}
+
     });
 
     return result;
@@ -252,6 +315,9 @@ containers,
       ),
     );
   }, [rows, search]);
+
+  
+
 
   const loading = jobsLoading || workflowsLoading;
 
@@ -292,9 +358,12 @@ const eligibleVendors = useMemo(() => {
     return [];
   }
 
-  const service = selectedRow.serviceName
-    .trim()
-    .toLowerCase();
+const service =
+  selectedRow.category === "Transportation"
+    ? "transport"
+    : selectedRow.serviceName
+        .trim()
+        .toLowerCase();
 
   return vendors.filter((vendor) => {
     if (
