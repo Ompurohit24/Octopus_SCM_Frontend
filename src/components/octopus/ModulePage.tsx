@@ -920,19 +920,49 @@ function openCreate() {
         }}
       />
 
-      <ConfirmDialog
-        open={bulkDeleteOpen}
-        onOpenChange={setBulkDeleteOpen}
-        title={`Delete ${selected.size} ${config.plural.toLowerCase()}?`}
-        description="The selected records will be permanently removed."
-        destructive
-        confirmLabel="Delete selected"
-        onConfirm={async () => {
-          await bulkDelete.mutateAsync(Array.from(selected));
-          setSelected(new Set());
-          setBulkDeleteOpen(false);
-        }}
-      />
+   <ConfirmDialog
+  open={bulkDeleteOpen}
+  onOpenChange={setBulkDeleteOpen}
+  title={`Delete ${selected.size} ${config.plural.toLowerCase()}?`}
+  description={
+    config.key === "importJobs"
+      ? "The selected Import Job(s) will be removed from active records."
+      : "The selected records will be permanently removed."
+  }
+  destructive
+  confirmLabel="Delete selected"
+  onConfirm={async () => {
+    try {
+      await bulkDelete.mutateAsync(
+        Array.from(selected),
+      );
+
+      setSelected(new Set());
+      setBulkDeleteOpen(false);
+
+    } catch (error) {
+
+      // Keep the selected rows and close only the
+      // original delete confirmation.
+      setBulkDeleteOpen(false);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to delete the selected Import Job.";
+
+      // Your useBulkDelete mutation already displays
+      // backend errors through toast.error().
+      //
+      // Do NOT clear `selected` here because deletion
+      // was blocked.
+      console.error(
+        "Bulk delete blocked:",
+        message,
+      );
+    }
+  }}
+/>
     </div>
   );
 }
