@@ -33,6 +33,11 @@ import { EntityFormDialog, ConfirmDialog } from "./EntityFormDialog";
 import { downloadCSV, pickAndReadCSV, toCSV } from "@/lib/csv";
 import { toast } from "sonner";
 
+import {
+  getPendingRegistrations,
+  type PendingRegistrationLocal,
+} from "@/lib/pendingRegistration";
+
 
 
 // ---------- Pill (kept for back-compat) ----------
@@ -407,6 +412,23 @@ function CrudModulePage<K extends EntityKey>({
   const [deleteRow, setDeleteRow] = useState<EntityMap[K] | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
+  const [
+  pendingRegistrations,
+  setPendingRegistrations,
+] = useState<
+  PendingRegistrationLocal[]
+>([]);
+
+const [
+  pendingListOpen,
+  setPendingListOpen,
+] = useState(false);
+
+
+const [
+  selectedPendingRegistrationId,
+  setSelectedPendingRegistrationId,
+] = useState<string | null>(null);
 
 const [
   deleteBlockedOpen,
@@ -463,6 +485,23 @@ const showDeleteBlockedDialog = (
   const nextCustomerCode = useNextCustomerCode();
   const nextVendorCode = useNextVendorCode();
   const nextImportJobNumber = useNextImportJobNumber();
+  
+
+  useEffect(() => {
+  if (config.key !== "customers") {
+    setPendingRegistrations([]);
+    return;
+  }
+
+  setPendingRegistrations(
+    getPendingRegistrations(
+      "customer",
+    ),
+  );
+}, [
+  config.key,
+  createOpen,
+]);
   // const nextCustomerCode =
   // config.key === "customers"
   //   ? useNextCustomerCode()
@@ -621,7 +660,56 @@ function openCreate() {
          hideDefaultExport={hideDefaultExport}
         onNew={openCreate}
         newLabel={`New ${config.singular}`}
-        extraActions={extraHeaderActions}
+        extraActions={
+  <>
+    {config.key === "customers" &&
+      pendingRegistrations.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setPendingRegistrations(
+              getPendingRegistrations(
+                "customer",
+              ),
+            );
+
+            setPendingListOpen(true);
+          }}
+          className="
+            inline-flex
+            items-center
+            gap-1.5
+            rounded-lg
+            border
+            border-border
+            bg-card
+            px-3
+            py-1.5
+            text-xs
+            font-medium
+            hover:bg-accent
+          "
+        >
+          Pending Verifications
+          <span
+            className="
+              rounded-full
+              bg-primary
+              px-1.5
+              py-0.5
+              text-[10px]
+              font-semibold
+              text-primary-foreground
+            "
+          >
+            {pendingRegistrations.length}
+          </span>
+        </button>
+      )}
+
+    {extraHeaderActions}
+  </>
+}
       />
 
       {config.tabs && (
@@ -903,13 +991,273 @@ function openCreate() {
         </div>
       </div>
 
-      <EntityFormDialog<EntityMap[K]>
-        open={createOpen}
-        onOpenChange={(open) => {
-  setCreateOpen(open);
 
-  if (!open) {
-    setCreateDefaults(undefined);
+{config.key === "customers" &&
+  pendingListOpen && (
+    <div
+      className="
+        fixed
+        inset-0
+        z-[100]
+        flex
+        items-center
+        justify-center
+        bg-black/50
+        p-4
+      "
+      onClick={() =>
+        setPendingListOpen(false)
+      }
+    >
+      <div
+        className="
+          w-full
+          max-w-2xl
+          overflow-hidden
+          rounded-xl
+          border
+          border-border
+          bg-card
+          shadow-elevated
+        "
+        onClick={(e) =>
+          e.stopPropagation()
+        }
+      >
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            border-b
+            border-border
+            px-5
+            py-4
+          "
+        >
+          <div>
+            <h2
+              className="
+                text-base
+                font-semibold
+              "
+            >
+              Pending Customer
+              Verifications
+            </h2>
+
+            <p
+              className="
+                mt-1
+                text-xs
+                text-muted-foreground
+              "
+            >
+              Continue OTP verification
+              for a pending Customer.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setPendingListOpen(false)
+            }
+            className="
+              rounded-md
+              px-2
+              py-1
+              text-sm
+              text-muted-foreground
+              hover:bg-accent
+              hover:text-foreground
+            "
+          >
+            ✕
+          </button>
+        </div>
+
+        <div
+          className="
+            max-h-[60vh]
+            space-y-3
+            overflow-y-auto
+            p-4
+          "
+        >
+          {pendingRegistrations.length ===
+          0 ? (
+            <div
+              className="
+                py-8
+                text-center
+                text-sm
+                text-muted-foreground
+              "
+            >
+              No pending Customer
+              verifications.
+            </div>
+          ) : (
+            pendingRegistrations.map(
+              (registration) => (
+                <div
+                  key={
+                    registration.registrationId
+                  }
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    rounded-lg
+                    border
+                    border-border
+                    bg-background
+                    p-4
+                  "
+                >
+                  <div
+                    className="
+                      min-w-0
+                      flex-1
+                    "
+                  >
+                    <div
+                      className="
+                        truncate
+                        text-sm
+                        font-medium
+                      "
+                    >
+                      {
+                        registration.entityName
+                      }
+                    </div>
+
+                    <div
+                      className="
+                        mt-1
+                        text-xs
+                        text-muted-foreground
+                      "
+                    >
+                      Expires:{" "}
+                      {new Date(
+                        registration.expiresAt,
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+onClick={() => {
+  setSelectedPendingRegistrationId(
+    registration.registrationId,
+  );
+
+  setPendingListOpen(false);
+}}
+
+                    className="
+                      shrink-0
+                      rounded-lg
+                      bg-primary
+                      px-3
+                      py-2
+                      text-xs
+                      font-medium
+                      text-primary-foreground
+                      hover:opacity-95
+                    "
+                  >
+                    Continue Verification
+                  </button>
+                </div>
+              ),
+            )
+          )}
+        </div>
+
+        <div
+          className="
+            flex
+            justify-end
+            border-t
+            border-border
+            px-4
+            py-3
+          "
+        >
+          <button
+            type="button"
+            onClick={() =>
+              setPendingListOpen(false)
+            }
+            className="
+              rounded-lg
+              border
+              border-border
+              bg-background
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              hover:bg-accent
+            "
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
+
+
+    <EntityFormDialog<EntityMap[K]>
+  open={
+    createOpen ||
+    Boolean(
+      selectedPendingRegistrationId,
+    )
+  }
+
+  onOpenChange={(open) => {
+    setCreateOpen(open);
+
+    if (!open) {
+      setCreateDefaults(undefined);
+
+      setSelectedPendingRegistrationId(
+        null,
+      );
+    }
+  }}
+
+  pendingRegistrationId={
+  config.key === "customers" ||
+  config.key === "vendors"
+    ? selectedPendingRegistrationId
+    : null
+}
+
+  onPendingRegistrationHandled={() => {
+  setSelectedPendingRegistrationId(
+    null,
+  );
+
+  if (
+    config.key === "customers" ||
+    config.key === "vendors"
+  ) {
+    setPendingRegistrations(
+      getPendingRegistrations(
+        config.key === "customers"
+          ? "customer"
+          : "vendor",
+      ),
+    );
   }
 }}
         title={`New ${config.singular}`}

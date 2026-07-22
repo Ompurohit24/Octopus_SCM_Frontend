@@ -44,14 +44,23 @@ import SearchableJobSelect from "@/components/octopus/SearchableJobSelect";
 interface Props<T> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+
+  pendingRegistrationId?: string | null;
+  onPendingRegistrationHandled?: () => void;
+
   title: string;
   fields: FieldDef[];
   defaultValues?: Partial<T>;
   submitLabel?: string;
-  onSubmit: (values: Partial<T>) => Promise<Partial<T>> | Partial<T>;
+
+  onSubmit: (
+    values: Partial<T>,
+  ) => Promise<Partial<T>> | Partial<T>;
+
   /** Notify parent when a specific field changes (useful for lookups). */
   watchField?: string;
   onWatchChange?: (value: string) => void;
+
   /** Optional banner rendered at the top of the dialog body. */
   banner?: ReactNode;
 }
@@ -139,10 +148,11 @@ export function EntityFormDialog<T>({
   watchField,
   onWatchChange,
   banner,
+  pendingRegistrationId,
+onPendingRegistrationHandled,
 }: Props<T>) {
   
   const formId = useId();
-
 
 
 const [otpOpen, setOtpOpen] =
@@ -358,8 +368,17 @@ const [registrationId, setRegistrationId] = useState("");
 const [registrationEntityType, setRegistrationEntityType] =
   useState<"customer" | "vendor" | null>(null);
 
-const [registrationEntityName, setRegistrationEntityName] =
-  useState("");
+  const [
+  registrationEntityName,
+  setRegistrationEntityName,
+] = useState("");
+
+
+
+const [
+  registrationExpiresAt,
+  setRegistrationExpiresAt,
+] = useState("");
 
 const [otpVerificationFields, setOtpVerificationFields] =
   useState<OTPVerificationField[]>([]);
@@ -374,12 +393,13 @@ const [otpLoading, setOtpLoading] = useState(false);
 
 
 const openRegistrationOTPDialog = (
-  response: {
-    registration_id: string;
-    entity_type: "customer" | "vendor";
-    entity_name: string;
-    verification_fields: OTPVerificationField[];
-  },
+ response: {
+  registration_id: string;
+  entity_type: "customer" | "vendor";
+  entity_name: string;
+  expires_at?: string;
+  verification_fields: OTPVerificationField[];
+},
 ) => {
   setRegistrationId(response.registration_id);
 
@@ -387,9 +407,11 @@ const openRegistrationOTPDialog = (
     response.entity_type,
   );
 
-  setRegistrationEntityName(
-    response.entity_name,
-  );
+
+
+  setRegistrationExpiresAt(
+  response.expires_at ?? "",
+);
 
   setOtpVerificationFields(
     response.verification_fields ?? [],
@@ -709,8 +731,9 @@ removePendingRegistration(
   registrationId,
 );
 
-setOtpDialog(false);
+onPendingRegistrationHandled?.();
 
+setOtpDialog(false);
 setCreatedCustomer(
   (
     result.customer ?? {}
@@ -786,8 +809,9 @@ removePendingRegistration(
   registrationId,
 );
 
-    setOtpDialog(false);
+onPendingRegistrationHandled?.();
 
+setOtpDialog(false);
 // Close New Vendor form after actual
 // Vendor creation succeeds.
 
@@ -811,6 +835,7 @@ setCreatedVendor(
     setOtpVerificationFields([]);
     setOtpValues({});
     setOtpError("");
+    setRegistrationExpiresAt("");
 
   } catch (e) {
     setOtpError(
@@ -927,18 +952,27 @@ const resumePendingRegistration = async () => {
   }
 
   // -------------------------------------------------
-  // CHECK BROWSER FOR ACTIVE PENDING REGISTRATION
+  // DETERMINE WHICH REGISTRATION TO RESUME
   //
-  // getLatestPendingRegistration() automatically
-  // ignores/removes expired local registrations.
+  // If user clicked "Continue Verification",
+  // use that exact registration ID.
+  //
+  // Otherwise keep old automatic resume behavior
+  // using the latest locally saved registration.
   // -------------------------------------------------
 
-  const pending =
-    getLatestPendingRegistration(
-      entityType,
-    );
+  const localPending =
+    pendingRegistrationId
+      ? null
+      : getLatestPendingRegistration(
+          entityType,
+        );
 
-  if (!pending) {
+  const registrationIdToResume =
+    pendingRegistrationId ??
+    localPending?.registrationId;
+
+  if (!registrationIdToResume) {
     return;
   }
 
@@ -953,7 +987,7 @@ const resumePendingRegistration = async () => {
       registration =
         await apiClient
           .getPendingCustomerRegistration(
-            pending.registrationId,
+            registrationIdToResume,
           );
     }
 
@@ -965,7 +999,7 @@ const resumePendingRegistration = async () => {
       registration =
         await apiClient
           .getPendingVendorRegistration(
-            pending.registrationId,
+            registrationIdToResume,
           );
     }
 
@@ -980,9 +1014,18 @@ const resumePendingRegistration = async () => {
     setRegistrationEntityType(
       registration.entity_type,
     );
+setRegistrationEntityName(
+  registration.entity_name ||
+    (
+      registration.entity_type ===
+      "customer"
+        ? "Customer"
+        : "Vendor"
+    ),
+);
 
-    setRegistrationEntityName(
-      registration.entity_name,
+    setRegistrationExpiresAt(
+      registration.expires_at ?? "",
     );
 
     setOtpVerificationFields(
@@ -996,9 +1039,7 @@ const resumePendingRegistration = async () => {
       const field of
       registration.verification_fields ?? []
     ) {
-      restoredOTPValues[
-        field.key
-      ] = "";
+      restoredOTPValues[field.key] = "";
     }
 
     setOtpValues(
@@ -1007,24 +1048,37 @@ const resumePendingRegistration = async () => {
 
     setOtpError("");
 
-    // Directly show OTP dialog.
+    // Directly show the existing OTP dialog.
     setOtpDialog(true);
 
   } catch (e) {
     /*
-     * If backend says the registration no longer
-     * exists / expired / already completed,
-     * remove the stale browser reference.
+     * Remove local storage only when this registration
+     * came from the automatic local resume flow.
+     *
+     * A specifically selected registration may come
+     * from the pending-registration list, so don't
+     * blindly remove another local entry.
      */
 
-    removePendingRegistration(
-      pending.registrationId,
-    );
+    if (localPending) {
+      removePendingRegistration(
+        registrationIdToResume,
+      );
+    }
 
     console.error(
       "[Pending Registration Resume]",
       e,
     );
+
+    toast.error(
+      e instanceof Error
+        ? e.message
+        : "Unable to resume pending verification.",
+    );
+
+    onPendingRegistrationHandled?.();
   }
 };
 
@@ -1055,6 +1109,7 @@ useEffect(() => {
 }, [
   open,
   title,
+  pendingRegistrationId,
 ]);
 
 if (!open) return null;
@@ -2441,20 +2496,34 @@ const baseInput =
   type="button"
   variant="outline"
   disabled={otpLoading}
-  onClick={() => {
-    // Close OTP popup.
-    setOtpDialog(false);
+ onClick={() => {
+  if (
+    !registrationId ||
+    !registrationEntityType
+  ) {
+    setOtpError(
+      "Registration information is missing.",
+    );
+    return;
+  }
 
-    // Clear only OTP text entered in this session.
-    // Do NOT remove the pending registration.
-    setOtpValues({});
-    setOtpError("");
+  savePendingRegistration({
+    registrationId,
+    entityType:
+      registrationEntityType,
+    entityName:
+      registrationEntityName,
+    expiresAt:
+      new Date(
+        Date.now() +
+          24 * 60 * 60 * 1000,
+      ).toISOString(),
+  });
 
-    // Close the underlying New Customer/Vendor form.
-    // The pending registration remains stored and
-    // can be resumed when the form is opened again.
-    onOpenChange(false);
-  }}
+  setOtpDialog(false);
+
+  onOpenChange(false);
+}}
 >
   Verify Later
 </Button>
