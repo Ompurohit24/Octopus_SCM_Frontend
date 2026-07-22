@@ -1268,6 +1268,27 @@ return fromImportWorkflow(item) as unknown as EntityMap[K];
 if (key === "customers") {
   const customer = patch as any;
 
+  const managementEmail =
+    String(
+      customer.managementEmail ??
+        customer.management_email ??
+        "",
+    ).trim();
+
+  const accountsEmail =
+    String(
+      customer.accountsEmail ??
+        customer.accounts_email ??
+        "",
+    ).trim();
+
+  const operationsEmail =
+    String(
+      customer.operationsEmail ??
+        customer.operations_email ??
+        "",
+    ).trim();
+
   patch = {
     customer_code:
       customer.customer_code ??
@@ -1281,16 +1302,15 @@ if (key === "customers") {
       customer.address,
 
     management_email:
-      customer.managementEmail ??
-      customer.management_email,
+      managementEmail,
 
+    // Optional emails must be null,
+    // never an empty string.
     accounts_email:
-      customer.accountsEmail ??
-      customer.accounts_email,
+      accountsEmail || null,
 
     operations_email:
-      customer.operationsEmail ??
-      customer.operations_email,
+      operationsEmail || null,
 
     countryCode:
       customer.countryCode,
