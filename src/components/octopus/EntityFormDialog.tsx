@@ -45,7 +45,8 @@ interface Props<T> {
   onOpenChange: (open: boolean) => void;
 
   pendingRegistrationId?: string | null;
-  onPendingRegistrationHandled?: () => void;
+  onPendingRegistrationHandled?:
+  () => void | Promise<void>;
 
   title: string;
   fields: FieldDef[];
@@ -755,14 +756,13 @@ if (
 }
 
 // ---------------------------------------------
-// FINAL PROFILE CREATED
+// FINAL OPERATION COMPLETED
 // ---------------------------------------------
 
 removePendingRegistration(
   registrationId,
 );
 
-// Close OTP first.
 setOtpDialog(false);
 
 // ---------------------------------------------
@@ -774,7 +774,9 @@ if (
   "customer"
 ) {
   setCreatedCustomer(
-    (result.customer ?? {}) as Record<
+    (
+      result.customer ?? {}
+    ) as Record<
       string,
       unknown
     >,
@@ -786,8 +788,6 @@ if (
     registrationOperationType ===
       "email_update"
   ) {
-    // We will use the Customer success
-    // dialog in update mode.
     setRegistrationOperationType(
       "email_update",
     );
@@ -812,7 +812,7 @@ if (
 }
 
 // ---------------------------------------------
-// CLEAR OTP REGISTRATION STATE
+// CLEAR OTP STATE
 // ---------------------------------------------
 
 setRegistrationId("");
@@ -824,16 +824,16 @@ setOtpValues({});
 setOtpError("");
 
 // ---------------------------------------------
-// NOTIFY PARENT LAST
+// REFRESH PARENT
 //
-// This refreshes:
-// 1. Pending Verifications
-// 2. Customer / Vendor table
-//
-// Must happen AFTER success state is prepared.
+// Refreshes:
+// - Customer / Vendor table
+// - Pending Verifications
 // ---------------------------------------------
 
-onPendingRegistrationHandled?.();
+if (onPendingRegistrationHandled) {
+  await onPendingRegistrationHandled();
+}
 
 } catch (e) {
   setOtpError(
@@ -1036,7 +1036,9 @@ const resumePendingRegistration =
           : "Unable to resume pending verification.",
       );
 
-      onPendingRegistrationHandled?.();
+      if (onPendingRegistrationHandled) {
+  await onPendingRegistrationHandled();
+}
     }
   };
 
@@ -1390,11 +1392,15 @@ if (title === "Edit Customer") {
   //
   // Do NOT call onSubmit again.
 
-  onPendingRegistrationHandled?.();
+ if (onPendingRegistrationHandled) {
+  await onPendingRegistrationHandled();
+}
 
-  onOpenChange(false);
+onOpenChange(false);
 
-  return;
+return;
+
+  
 }
 
 

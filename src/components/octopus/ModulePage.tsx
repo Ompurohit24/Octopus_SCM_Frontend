@@ -1443,16 +1443,16 @@ function openCreate() {
     : null
 }
 
- onPendingRegistrationHandled={() => {
+ onPendingRegistrationHandled={async () => {
   setSelectedPendingRegistrationId(
     null,
   );
 
   setCreateDefaults(undefined);
 
-  void loadPendingVerifications();
+  await loadPendingVerifications();
 
-  void listQuery.refetch();
+  await listQuery.refetch();
 }}
         title={`New ${config.singular}`}
         fields={config.fields}
