@@ -1472,23 +1472,65 @@ function openCreate() {
       />
 
       <EntityFormDialog<EntityMap[K]>
-        open={!!editRow}
-        onOpenChange={(o) => !o && setEditRow(null)}
-        title={`Edit ${config.singular}`}
-        fields={config.fields}
-        defaultValues={editRow ?? undefined}
-        submitLabel="Save changes"  
-        onSubmit={async (vals) => {
-  if (!editRow) {
-    return {} as Partial<EntityMap[K]>;
+  open={!!editRow}
+
+  onOpenChange={(open) => {
+    if (!open) {
+      setEditRow(null);
+    }
+  }}
+
+  title={`Edit ${config.singular}`}
+
+  fields={config.fields}
+
+  defaultValues={
+    editRow ?? undefined
   }
 
-  return await update.mutateAsync({
-    id: (editRow as { id: ID }).id,
-    patch: vals,
-  });
-}}
-      />
+  submitLabel="Save changes"
+
+  onPendingRegistrationHandled={
+    async () => {
+      // -----------------------------------------
+      // REFRESH TABLE AFTER OTP EMAIL UPDATE
+      // -----------------------------------------
+
+      await listQuery.refetch();
+
+      // -----------------------------------------
+      // REFRESH PENDING VERIFICATIONS
+      //
+      // Only Customer / Vendor use this.
+      // -----------------------------------------
+
+      if (
+        config.key === "customers" ||
+        config.key === "vendors"
+      ) {
+        await loadPendingVerifications();
+      }
+    }
+  }
+
+  onSubmit={async (vals) => {
+    if (!editRow) {
+      return {} as Partial<
+        EntityMap[K]
+      >;
+    }
+
+    return await update.mutateAsync({
+      id: (
+        editRow as {
+          id: ID;
+        }
+      ).id,
+
+      patch: vals,
+    });
+  }}
+/>
 
      <ConfirmDialog
   open={!!deleteRow}

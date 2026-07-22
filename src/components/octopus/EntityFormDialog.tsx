@@ -365,6 +365,11 @@ const [otpDialog, setOtpDialog] = useState(false);
 
 const [registrationId, setRegistrationId] = useState("");
 
+const [
+  editingPendingRegistration,
+  setEditingPendingRegistration,
+] = useState(false);
+
 const [registrationEntityType, setRegistrationEntityType] =
   useState<"customer" | "vendor" | null>(null);
 
@@ -425,6 +430,10 @@ const openRegistrationOTPDialog = (
     response.verification_fields ?? [],
   );
 
+setEditingPendingRegistration(
+  false,
+);
+
   const initialOTPValues: Record<string, string> = {};
 
   for (
@@ -466,6 +475,10 @@ const startRegistrationOTP = async (
 
   const isVendor =
     title === "New Vendor";
+
+  const isEditingPending =
+  editingPendingRegistration &&
+  Boolean(registrationId);
 
   if (!isCustomer && !isVendor) {
     return false;
@@ -574,15 +587,23 @@ const startRegistrationOTP = async (
       ),
     );
 
-    const response =
-      await apiClient
+   const result =
+  isEditingPending
+    ? await apiClient
+        .updateCustomerRegistration(
+          registrationId,
+          formData,
+        )
+    : await apiClient
         .startCustomerRegistration(
           formData,
         );
 
+
+
     openRegistrationOTPDialog(
-      response,
-    );
+  result,
+);
 
     return true;
   }
@@ -629,19 +650,41 @@ formData.set(
   ).trim(),
 );
 
-const response =
-  await apiClient
-    .startVendorRegistration(
-      formData,
-    );
+const result =
+  isEditingPending
+    ? await apiClient
+        .updateVendorRegistration(
+          registrationId,
+          formData,
+        )
+    : await apiClient
+        .startVendorRegistration(
+          formData,
+        );
 
 openRegistrationOTPDialog(
-  response,
+  result,
 );
-
 return true;
 };
 
+
+const editRegistrationDetails = () => {
+  // We are editing the SAME pending registration.
+  // The next Submit must call registration/update,
+  // not registration/start.
+  setEditingPendingRegistration(
+    true,
+  );
+
+  // Close only OTP dialog.
+  // Keep registrationId and form values.
+  setOtpDialog(false);
+
+  setOtpError("");
+
+  setOtpValues({});
+};
 
 const verifyRegistrationOTP = async (
   field: OTPVerificationField,
@@ -807,6 +850,21 @@ if (
       unknown
     >,
   );
+
+  if (
+    result.operation_type ===
+      "email_update" ||
+    registrationOperationType ===
+      "email_update"
+  ) {
+    setRegistrationOperationType(
+      "email_update",
+    );
+  } else {
+    setRegistrationOperationType(
+      "create",
+    );
+  }
 
   setVendorSuccessDialog(true);
 }
@@ -1401,6 +1459,147 @@ onOpenChange(false);
 return;
 
   
+}
+
+
+
+
+
+// =================================================
+// EXISTING VENDOR EDIT
+//
+// If Vendor email changed:
+// → OTP to new email
+// → do not update Vendor until verified.
+//
+// If email did not change:
+// → backend performs normal update immediately.
+// =================================================
+
+if (title === "Edit Vendor") {
+  const vendorId = String(
+    (
+      defaultValues as
+        | Record<string, unknown>
+        | undefined
+    )?.id ??
+      (
+        defaultValues as
+          | Record<string, unknown>
+          | undefined
+      )?._id ??
+      "",
+  ).trim();
+
+  if (!vendorId) {
+    throw new Error(
+      "Vendor ID is missing.",
+    );
+  }
+
+  // ---------------------------------------------
+  // NORMALIZE VENDOR PAYLOAD
+  // ---------------------------------------------
+
+  const vendorPayload = {
+    ...cleaned,
+
+    email:
+      String(
+        cleaned.email ??
+          cleaned.emailId ??
+          cleaned.email_id ??
+          "",
+      ).trim() || null,
+  };
+
+  const result =
+    await apiClient
+      .startVendorEmailUpdate(
+        vendorId,
+        vendorPayload,
+      );
+
+  // ---------------------------------------------
+  // EMAIL CHANGE REQUIRES OTP
+  // ---------------------------------------------
+
+  if (
+    result.verification_required
+  ) {
+    setRegistrationId(
+      result.registration_id ?? "",
+    );
+
+    setRegistrationEntityType(
+      "vendor",
+    );
+
+    setRegistrationOperationType(
+      "email_update",
+    );
+
+    setRegistrationEntityName(
+      result.entity_name ??
+        String(
+          cleaned.name ??
+            cleaned.vendorName ??
+            cleaned.vendor_name ??
+            "Vendor",
+        ),
+    );
+
+    setRegistrationExpiresAt(
+      result.expires_at ?? "",
+    );
+
+    setOtpVerificationFields(
+      result.verification_fields ??
+        [],
+    );
+
+    const initialOtpValues:
+      Record<string, string> = {};
+
+    for (
+      const field of
+      result.verification_fields ?? []
+    ) {
+      initialOtpValues[
+        field.key
+      ] = "";
+    }
+
+    setOtpValues(
+      initialOtpValues,
+    );
+
+    setOtpError("");
+
+    setOtpDialog(true);
+
+    // Critical:
+    // Never continue to generic onSubmit().
+    // New Vendor email is not verified yet.
+    return;
+  }
+
+  // ---------------------------------------------
+  // NO EMAIL CHANGE
+  //
+  // Backend already performed normal Vendor update.
+  // Refresh Vendor table and close Edit dialog.
+  // ---------------------------------------------
+
+  if (
+    onPendingRegistrationHandled
+  ) {
+    await onPendingRegistrationHandled();
+  }
+
+  onOpenChange(false);
+
+  return;
 }
 
 
@@ -2135,7 +2334,10 @@ const baseInput =
       />
 
       <h2 className="mt-5 text-2xl font-bold text-green-600">
-        Vendor Created Successfully
+{registrationOperationType ===
+"email_update"
+  ? "Vendor Updated Successfully"
+  : "Vendor Created Successfully"}
       </h2>
 
       <div className="mt-6 space-y-2 text-sm">
@@ -2493,26 +2695,27 @@ const baseInput =
           {registrationEntityName}
         </p>
 
-        <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-muted-foreground">
   {registrationOperationType ===
-  "email_update"
-    ? (
-        <>
-          Enter the OTP sent to the
-          changed email address.
-          The Customer email will be
-          updated only after successful
-          verification.
-        </>
-      )
-    : (
-        <>
-          Enter the OTP sent to each
-          email address. Registration
-          will be completed only after
-          successful email verification.
-        </>
-      )}
+  "email_update" ? (
+    <>
+      Enter the OTP sent to the
+      changed email address. The{" "}
+      {registrationEntityType ===
+      "customer"
+        ? "Customer"
+        : "Vendor"}{" "}
+      email will be updated only
+      after successful verification.
+    </>
+  ) : (
+    <>
+      Enter the OTP sent to each
+      email address. Registration
+      will be completed only after
+      successful email verification.
+    </>
+  )}
 </p>
       </div>
 
@@ -2665,6 +2868,21 @@ const baseInput =
       {/* ACTION BUTTONS */}
 
       <DialogFooter className="gap-2">
+
+        {/* EDIT CUSTOMER / VENDOR DETAILS */}
+<Button
+  type="button"
+  variant="outline"
+  disabled={
+    otpLoading ||
+    resendingOTPKey !== null
+  }
+  onClick={
+    editRegistrationDetails
+  }
+>
+  Edit Details
+</Button>
 
         <Button
   type="button"

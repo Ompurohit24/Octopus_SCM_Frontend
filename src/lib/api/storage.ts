@@ -642,6 +642,87 @@ startVendorRegistration(
   );
 },
 
+
+async updateCustomerRegistration(
+  registrationId: string,
+  formData: FormData,
+) {
+  const customer =
+    Object.fromEntries(
+      formData.entries(),
+    );
+
+  return request<{
+    registration_id: string;
+    entity_type: "customer";
+    entity_name: string;
+    status: string;
+    expires_at?: string;
+
+    verification_fields: Array<{
+      key: string;
+      label: string;
+      email: string;
+      verified: boolean;
+      otp_sent?: boolean;
+    }>;
+
+    message?: string;
+  }>(
+    "/customers/registration/update",
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        registration_id:
+          registrationId,
+
+        customer,
+      }),
+    },
+  );
+},
+
+async updateVendorRegistration(
+  registrationId: string,
+  formData: FormData,
+) {
+  const vendor =
+    Object.fromEntries(
+      formData.entries(),
+    );
+
+  return request<{
+    registration_id: string;
+    entity_type: "vendor";
+    entity_name: string;
+    status: string;
+    expires_at?: string;
+
+    verification_fields: Array<{
+      key: string;
+      label: string;
+      email: string;
+      verified: boolean;
+      otp_sent?: boolean;
+    }>;
+
+    message?: string;
+  }>(
+    "/vendors/registration/update",
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        registration_id:
+          registrationId,
+
+        vendor,
+      }),
+    },
+  );
+},
+
 verifyVendorRegistration(
   payload: VendorOTPVerifyPayload,
 ) {
@@ -1288,6 +1369,57 @@ async startCustomerEmailUpdate(
     },
   );
 },
+
+async startVendorEmailUpdate(
+  vendorId: string,
+  vendor: Record<string, unknown>,
+) {
+  return request<{
+    verification_required: boolean;
+    updated: boolean;
+
+    registration_id?: string;
+
+    entity_type?: "vendor";
+
+    operation_type?: "email_update";
+
+    entity_id?: string;
+
+    entity_name?: string;
+
+    expires_at?: string;
+
+    verification_fields?: Array<{
+      key: string;
+      label: string;
+      email: string;
+      verified: boolean;
+      otp_sent?: boolean;
+    }>;
+
+    vendor?: Record<
+      string,
+      unknown
+    >;
+
+    message?: string;
+  }>(
+    "/vendors/email-update/start",
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        vendor_id:
+          vendorId,
+
+        vendor,
+      }),
+    },
+  );
+},
+
+
 
 async update<K extends EntityKey>(
   key: K,
