@@ -561,45 +561,55 @@ const startRegistrationOTP = async (
   // VENDOR
   // =================================================
 
-  formData.set(
-    "vendor_code",
-    String(
-      values.vendorCode ?? "",
-    ),
-  );
+  // =================================================
+// VENDOR
+// =================================================
 
-  formData.set(
-    "vendor_name",
-    String(
-      values.vendorName ?? "",
-    ),
-  );
+formData.set(
+  "vendor_code",
+  String(
+    values.vendor_code ??
+    values.vendorCode ??
+    "",
+  ),
+);
 
-  formData.set(
-    "email",
-    String(
-      values.email ?? "",
-    ),
-  );
+formData.set(
+  "vendor_name",
+  String(
+    values.vendor_name ??
+    values.vendorName ??
+    "",
+  ).trim(),
+);
 
-  formData.set(
-    "type_of_service",
-    String(
-      values.typeOfService ?? "",
-    ),
-  );
+formData.set(
+  "email",
+  String(
+    values.email ?? "",
+  ).trim(),
+);
 
-  const response =
-    await apiClient
-      .startVendorRegistration(
-        formData,
-      );
+formData.set(
+  "type_of_service",
+  String(
+    values.type_of_service ??
+    values.typeOfService ??
+    "",
+  ).trim(),
+);
 
-  openRegistrationOTPDialog(
-    response,
-  );
+const response =
+  await apiClient
+    .startVendorRegistration(
+      formData,
+    );
 
-  return true;
+openRegistrationOTPDialog(
+  response,
+);
+
+return true;
 };
 
 
