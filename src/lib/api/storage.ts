@@ -647,10 +647,34 @@ async updateCustomerRegistration(
   registrationId: string,
   formData: FormData,
 ) {
-  const customer =
+  const raw =
     Object.fromEntries(
       formData.entries(),
     );
+
+  // Optional Customer emails must be null,
+  // not empty strings.
+  //
+  // Pydantic Optional[EmailStr] accepts null,
+  // but rejects "" as an invalid email.
+  const customer = {
+    ...raw,
+
+    management_email:
+      String(
+        raw.management_email ?? "",
+      ).trim() || null,
+
+    accounts_email:
+      String(
+        raw.accounts_email ?? "",
+      ).trim() || null,
+
+    operations_email:
+      String(
+        raw.operations_email ?? "",
+      ).trim() || null,
+  };
 
   return request<{
     registration_id: string;
