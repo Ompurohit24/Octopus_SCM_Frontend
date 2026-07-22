@@ -544,7 +544,16 @@ export type VendorOTPVerifyPayload = {
 
 export type RegistrationVerifyResponse<T> = {
   created: boolean;
+
+  // Used when an existing Customer/Vendor
+  // is updated after OTP verification.
+  updated?: boolean;
+
   all_verified: boolean;
+
+  // Present for verified email-change updates.
+  operation_type?:
+    | "email_update";
 
   customer?: T;
   vendor?: T;
@@ -1230,6 +1239,55 @@ return {
 };
 },
 
+
+async startCustomerEmailUpdate(
+  customerId: string,
+  customer: Record<string, unknown>,
+) {
+  return request<{
+    verification_required: boolean;
+    updated: boolean;
+
+    registration_id?: string;
+
+    entity_type?: "customer";
+
+    operation_type?: "email_update";
+
+    entity_id?: string;
+
+    entity_name?: string;
+
+    expires_at?: string;
+
+    verification_fields?: Array<{
+      key: string;
+      label: string;
+      email: string;
+      verified: boolean;
+      otp_sent?: boolean;
+    }>;
+
+    customer?: Record<
+      string,
+      unknown
+    >;
+
+    message?: string;
+  }>(
+    "/customers/email-update/start",
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        customer_id:
+          customerId,
+
+        customer,
+      }),
+    },
+  );
+},
 
 async update<K extends EntityKey>(
   key: K,

@@ -367,6 +367,14 @@ const [registrationId, setRegistrationId] = useState("");
 const [registrationEntityType, setRegistrationEntityType] =
   useState<"customer" | "vendor" | null>(null);
 
+
+  const [
+  registrationOperationType,
+  setRegistrationOperationType,
+] = useState<
+  "create" | "email_update"
+>("create");
+
   const [
   registrationEntityName,
   setRegistrationEntityName,
@@ -734,9 +742,13 @@ const verifyRegistrationOTP = async (
     // ---------------------------------------------
     // NOT ALL EMAILS VERIFIED YET
     // ---------------------------------------------
+const operationCompleted =
+  registrationOperationType === "email_update"
+    ? result.updated === true
+    : result.created === true;
 
-   if (
-  !result.created ||
+if (
+  !operationCompleted ||
   !result.all_verified
 ) {
   return;
@@ -762,13 +774,28 @@ if (
   "customer"
 ) {
   setCreatedCustomer(
-    (
-      result.customer ?? {}
-    ) as Record<
+    (result.customer ?? {}) as Record<
       string,
       unknown
     >,
   );
+
+  if (
+    result.operation_type ===
+      "email_update" ||
+    registrationOperationType ===
+      "email_update"
+  ) {
+    // We will use the Customer success
+    // dialog in update mode.
+    setRegistrationOperationType(
+      "email_update",
+    );
+  } else {
+    setRegistrationOperationType(
+      "create",
+    );
+  }
 
   setSuccessDialog(true);
 } else {
@@ -1235,6 +1262,141 @@ try {
       return;
     }
   }
+// =================================================
+// EXISTING CUSTOMER EDIT
+//
+// If an email changed, start OTP verification.
+// If no email changed, backend updates normally.
+// =================================================
+
+if (title === "Edit Customer") {
+  const customerId = String(
+    (
+      defaultValues as
+        | Record<string, unknown>
+        | undefined
+    )?.id ??
+      (
+        defaultValues as
+          | Record<string, unknown>
+          | undefined
+      )?._id ??
+      "",
+  ).trim();
+
+  if (!customerId) {
+    throw new Error(
+      "Customer ID is missing.",
+    );
+  }
+
+  const customerPayload = {
+    ...cleaned,
+
+    management_email:
+      String(
+        cleaned.managementEmail ??
+          cleaned.management_email ??
+          "",
+      ).trim() || null,
+
+    accounts_email:
+      String(
+        cleaned.accountsEmail ??
+          cleaned.accounts_email ??
+          "",
+      ).trim() || null,
+
+    operations_email:
+      String(
+        cleaned.operationsEmail ??
+          cleaned.operations_email ??
+          "",
+      ).trim() || null,
+  };
+
+  const result =
+    await apiClient
+      .startCustomerEmailUpdate(
+        customerId,
+        customerPayload,
+      );
+
+  // ---------------------------------------------
+  // EMAIL CHANGE REQUIRES OTP
+  // ---------------------------------------------
+
+  if (
+    result.verification_required
+  ) {
+    setRegistrationId(
+      result.registration_id ?? "",
+    );
+
+    setRegistrationEntityType(
+      "customer",
+    );
+
+    setRegistrationOperationType(
+      "email_update",
+    );
+
+    setRegistrationEntityName(
+      result.entity_name ??
+        String(
+          cleaned.customer_name ??
+            cleaned.customerName ??
+            "Customer",
+        ),
+    );
+
+    setRegistrationExpiresAt(
+      result.expires_at ?? "",
+    );
+
+    setOtpVerificationFields(
+      result.verification_fields ??
+        [],
+    );
+
+    const initialOtpValues:
+      Record<string, string> = {};
+
+    for (
+      const field of
+      result.verification_fields ?? []
+    ) {
+      initialOtpValues[
+        field.key
+      ] = "";
+    }
+
+    setOtpValues(
+      initialOtpValues,
+    );
+
+    setOtpError("");
+
+    setOtpDialog(true);
+
+    // CRITICAL:
+    // Never execute normal onSubmit after
+    // starting email OTP verification.
+    return;
+  }
+
+  // Backend already completed the normal update
+  // because no email verification was required.
+  //
+  // Do NOT call onSubmit again.
+
+  onPendingRegistrationHandled?.();
+
+  onOpenChange(false);
+
+  return;
+}
+
 
   // =================================================
   // EXISTING NORMAL FLOW
@@ -2021,7 +2183,10 @@ const baseInput =
 />
 
       <h2 className="mt-5 text-2xl font-bold text-green-600">
-        Customer Created Successfully
+        {registrationOperationType ===
+"email_update"
+  ? "Customer Updated Successfully"
+  : "Customer Created Successfully"}
       </h2>
 
       <div className="mt-6 space-y-2 text-sm">
@@ -2300,8 +2465,11 @@ const baseInput =
 >
     <DialogHeader>
       <DialogTitle>
-        Verify Email OTP
-      </DialogTitle>
+  {registrationOperationType ===
+  "email_update"
+    ? "Verify Email Change"
+    : "Verify Email OTP"}
+</DialogTitle>
     </DialogHeader>
 
     <div className="space-y-5">
@@ -2320,10 +2488,26 @@ const baseInput =
         </p>
 
         <p className="mt-2 text-xs text-muted-foreground">
-          Enter the OTP sent to each email address.
-          Registration will be completed only after
+  {registrationOperationType ===
+  "email_update"
+    ? (
+        <>
+          Enter the OTP sent to the
+          changed email address.
+          The Customer email will be
+          updated only after successful
+          verification.
+        </>
+      )
+    : (
+        <>
+          Enter the OTP sent to each
+          email address. Registration
+          will be completed only after
           successful email verification.
-        </p>
+        </>
+      )}
+</p>
       </div>
 
 
