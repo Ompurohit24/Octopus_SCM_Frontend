@@ -1274,15 +1274,17 @@ function openCreate() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedPendingRegistrationId(
-                            registration
-                              .registrationId,
-                          );
+  setSelectedPendingRegistrationId(
+    registration.registrationId,
+  );
 
-                          setPendingListOpen(
-                            false,
-                          );
-                        }}
+  // Keep EntityFormDialog mounted/open through
+  // OTP completion so its success dialog can
+  // display immediately.
+  setCreateOpen(true);
+
+  setPendingListOpen(false);
+}}
                         className="
                           shrink-0
                           rounded-lg
