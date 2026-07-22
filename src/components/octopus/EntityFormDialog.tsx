@@ -230,13 +230,44 @@ const initialized = useRef(false);
 const hasAutoScrolled = useRef(false);
 
 
+const [
+  editingPendingRegistration,
+  setEditingPendingRegistration,
+] = useState(false);
+
+const [
+  pendingRegistrationFormSnapshot,
+  setPendingRegistrationFormSnapshot,
+] = useState<Record<
+  string,
+  unknown
+> | null>(null);
+
 useEffect(() => {
   if (!open) {
     initialized.current = false;
     return;
   }
 
-  const values = buildDefaults<T>(fields, defaultValues);
+  // Edit Details from OTP:
+  // never overwrite the preserved Customer/Vendor
+  // form with fresh blank defaults.
+  if (
+    editingPendingRegistration &&
+    pendingRegistrationFormSnapshot
+  ) {
+    reset({
+      ...pendingRegistrationFormSnapshot,
+    });
+
+    return;
+  }
+
+  const values =
+    buildDefaults<T>(
+      fields,
+      defaultValues,
+    );
 
   if (title === "Update Job") {
     const today = new Date().toISOString().split("T")[0];
@@ -256,7 +287,15 @@ useEffect(() => {
   }
 
   reset(values);
-}, [open, defaultValues, fields, reset, title]);
+}, [
+  open,
+  defaultValues,
+  fields,
+  reset,
+  title,
+  editingPendingRegistration,
+  pendingRegistrationFormSnapshot,
+]);
 
   const watched = watch();
   const currentStage = useMemo(() => {
@@ -365,10 +404,7 @@ const [otpDialog, setOtpDialog] = useState(false);
 
 const [registrationId, setRegistrationId] = useState("");
 
-const [
-  editingPendingRegistration,
-  setEditingPendingRegistration,
-] = useState(false);
+
 
 const [registrationEntityType, setRegistrationEntityType] =
   useState<"customer" | "vendor" | null>(null);
@@ -483,6 +519,17 @@ const startRegistrationOTP = async (
   if (!isCustomer && !isVendor) {
     return false;
   }
+
+
+// Preserve the exact Customer/Vendor form.
+//
+// This is required because the parent form may reset
+// while the OTP dialog is open.
+//
+// File objects are intentionally preserved here too.
+setPendingRegistrationFormSnapshot({
+  ...values,
+});
 
   const formData = new FormData();
 
@@ -670,15 +717,32 @@ return true;
 
 
 const editRegistrationDetails = () => {
-  // We are editing the SAME pending registration.
-  // The next Submit must call registration/update,
-  // not registration/start.
+  // Next Submit must update the SAME
+  // pending registration.
   setEditingPendingRegistration(
     true,
   );
 
-  // Close only OTP dialog.
-  // Keep registrationId and form values.
+  // Restore exactly what the user submitted
+  // before the OTP dialog opened.
+  //
+  // Works for both:
+  // - New Customer
+  // - New Vendor
+  if (pendingRegistrationFormSnapshot) {
+    reset({
+      ...pendingRegistrationFormSnapshot,
+    });
+  }
+
+  // Close only OTP.
+  //
+  // IMPORTANT:
+  // Do NOT clear:
+  // - registrationId
+  // - registrationEntityType
+  // - otpVerificationFields
+  // - pendingRegistrationFormSnapshot
   setOtpDialog(false);
 
   setOtpError("");
@@ -880,6 +944,15 @@ setRegistrationExpiresAt("");
 setOtpVerificationFields([]);
 setOtpValues({});
 setOtpError("");
+
+
+setEditingPendingRegistration(
+  false,
+);
+
+setPendingRegistrationFormSnapshot(
+  null,
+);
 
 // ---------------------------------------------
 // REFRESH PARENT
